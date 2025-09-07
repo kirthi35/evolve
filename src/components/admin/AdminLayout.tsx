@@ -19,15 +19,16 @@ const AdminLayout: React.FC = () => {
     );
   }
 
-  const navigation = [
-    { name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' },
-    { name: 'User Management', href: '/admin/users', current: location.pathname === '/admin/users' },
-    { name: 'Upload Content', href: '/admin/upload', current: location.pathname === '/admin/upload' },
-  ];
+  const getPageTitle = (pathname: string) => {
+    if (pathname.includes('/admin/users')) return 'User Management';
+    if (pathname.includes('/admin/upload')) return 'Upload Content';
+    if (pathname.includes('/admin/dashboard')) return 'Dashboard';
+    return 'Admin';
+  }
 
   const breadcrumbs = [
     { label: 'Admin Panel', href: '/admin' },
-    { label: navigation.find(item => item.current)?.name || 'Page' }
+    { label: getPageTitle(location.pathname) }
   ];
 
   return (

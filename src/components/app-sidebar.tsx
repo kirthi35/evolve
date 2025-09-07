@@ -99,6 +99,10 @@ const data = {
           url: "/admin/users",
         },
         {
+          title: "Upload Content",
+          url: "/admin/upload",
+        },
+        {
           title: "Analytics",
           url: "/admin/analytics",
         },
