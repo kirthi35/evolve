@@ -5,7 +5,7 @@ import {
   fetchContentForGroup, 
   fetchQuestionsForVideo, 
   submitUserResponses, 
-  updateUserProgress 
+  upsertUserProgress 
 } from '../../services/airtableService';
 import type { Content, Question, QuestionnaireFormData } from '../../types/airtable';
 import Questionnaire from './Questionnaire';
@@ -109,7 +109,7 @@ const GroupADashboard: React.FC = () => {
       setIsSubmitting(true);
       
       // Update progress to 100%
-      await updateUserProgress({
+      await upsertUserProgress({
         UserID: user.uid,
         VideoID: currentVideo.id,
         WatchProgress: 100,
