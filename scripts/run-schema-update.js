@@ -14,16 +14,8 @@ const __dirname = path.dirname(__filename);
 
 console.log('🔧 Running Airtable Schema Updater...\n');
 
-// Check if environment variables are set
-if (!process.env.AIRTABLE_API_KEY || !process.env.AIRTABLE_BASE_ID) {
-  console.log('❌ Please set your Airtable credentials:');
-  console.log('   export AIRTABLE_API_KEY="your_api_key"');
-  console.log('   export AIRTABLE_BASE_ID="your_base_id"');
-  console.log('\n   Or create a .env file with:');
-  console.log('   AIRTABLE_API_KEY=your_api_key');
-  console.log('   AIRTABLE_BASE_ID=your_base_id');
-  process.exit(1);
-}
+// The script will use credentials from airtable-config.js or environment variables
+// No need to check here as the main script handles validation
 
 try {
   // Run the main schema updater script

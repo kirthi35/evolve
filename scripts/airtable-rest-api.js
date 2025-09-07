@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Airtable Schema Updater for Evolve Clinical Study Platform
- * 
- * This script updates the Airtable base schema to match the current codebase.
- * It creates missing tables and fields based on the TypeScript interfaces.
- * Uses Airtable REST API for better compatibility.
+ * Airtable REST API Schema Updater
+ * Uses Airtable REST API directly instead of the JavaScript library
  */
 
 import fs from 'fs';
@@ -16,7 +13,7 @@ import { airtableConfig } from './airtable-config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configuration from airtable-config.js
+// Configuration
 const config = {
   apiKey: process.env.AIRTABLE_API_KEY || airtableConfig.apiKey,
   baseId: process.env.AIRTABLE_BASE_ID || airtableConfig.baseId
@@ -24,7 +21,7 @@ const config = {
 
 const AIRTABLE_API_BASE = 'https://api.airtable.com/v0/meta/bases';
 
-// Table definitions based on the current codebase
+// Table definitions
 const tableDefinitions = [
   {
     name: 'Users',
@@ -165,21 +162,15 @@ async function makeAirtableRequest(endpoint, method = 'GET', data = null) {
   }
 }
 
-// Get all existing tables
+// Get existing tables
 async function getExistingTables() {
   try {
     console.log('🔍 Fetching existing tables...');
-    console.log(`   API Key: ${config.apiKey.substring(0, 10)}...`);
-    console.log(`   Base ID: ${config.baseId}`);
-    
     const response = await makeAirtableRequest('/tables');
     console.log(`   Found ${response.tables.length} tables`);
     return response.tables;
   } catch (error) {
     console.error('❌ Error fetching existing tables:', error.message);
-    console.error('   Make sure your API key and Base ID are correct');
-    console.error('   API Key format should be: pat...');
-    console.error('   Base ID format should be: app...');
     return [];
   }
 }
@@ -197,51 +188,18 @@ async function createTable(tableDef) {
       fields: fields
     };
 
-    console.log(`   Creating table with ${fields.length} fields...`);
     const table = await makeAirtableRequest('/tables', 'POST', tableData);
     console.log(`✅ Created table: ${tableDef.name} (ID: ${table.id})`);
     return table;
   } catch (error) {
     console.error(`❌ Error creating table ${tableDef.name}:`, error.message);
-    if (error.message.includes('permission')) {
-      console.error('   This might be a permission issue. Check if your API key has write access.');
-    }
-    if (error.message.includes('not found')) {
-      console.error('   Base not found. Check if your Base ID is correct.');
-    }
     return null;
   }
 }
 
-// Update table fields
-async function updateTableFields(tableId, tableDef) {
-  try {
-    console.log(`🔄 Updating fields for table: ${tableDef.name}`);
-    
-    // Get existing fields for this table
-    const tableInfo = await makeAirtableRequest(`/tables/${tableId}`);
-    const existingFieldNames = tableInfo.fields.map(field => field.name);
-
-    for (const fieldDef of tableDef.fields) {
-      if (!existingFieldNames.includes(fieldDef.name)) {
-        console.log(`  ➕ Adding field: ${fieldDef.name}`);
-        
-        const fieldConfig = getFieldConfig(fieldDef);
-        
-        await makeAirtableRequest(`/tables/${tableId}/fields`, 'POST', fieldConfig);
-        console.log(`  ✅ Added field: ${fieldDef.name}`);
-      } else {
-        console.log(`  ⏭️  Field already exists: ${fieldDef.name}`);
-      }
-    }
-  } catch (error) {
-    console.error(`❌ Error updating fields for table ${tableDef.name}:`, error.message);
-  }
-}
-
-// Main function to update schema
+// Main function
 async function updateAirtableSchema() {
-  console.log('🚀 Starting Airtable schema update...\n');
+  console.log('🚀 Starting Airtable schema update using REST API...\n');
 
   // Validate configuration
   if (config.apiKey === 'your_api_key_here' || config.baseId === 'your_base_id_here') {
@@ -268,10 +226,9 @@ async function updateAirtableSchema() {
       console.log(`\n📊 Processing table: ${tableDef.name}`);
       
       if (existingTableNames.includes(tableDef.name)) {
-        console.log(`  ✅ Table already exists: ${tableDef.name}`);
-        console.log(`     Note: Field updates require manual configuration in Airtable`);
+        console.log(`  ⏭️  Table already exists: ${tableDef.name}`);
       } else {
-        console.log(`  ➕ Table doesn't exist, creating new table...`);
+        console.log(`  ➕ Creating new table: ${tableDef.name}`);
         await createTable(tableDef);
       }
     }
@@ -279,8 +236,8 @@ async function updateAirtableSchema() {
     console.log('\n✅ Airtable schema update completed successfully!');
     console.log('\n📋 Summary:');
     console.log(`  - Processed ${tableDefinitions.length} table definitions`);
-    console.log(`  - Updated existing tables: ${existingTableNames.length}`);
-    console.log(`  - Created new tables: ${tableDefinitions.length - existingTableNames.length}`);
+    console.log(`  - Existing tables: ${existingTableNames.length}`);
+    console.log(`  - New tables created: ${tableDefinitions.length - existingTableNames.length}`);
 
   } catch (error) {
     console.error('\n❌ Error updating Airtable schema:', error.message);
@@ -288,86 +245,16 @@ async function updateAirtableSchema() {
   }
 }
 
-// Generate schema documentation
-function generateSchemaDocumentation() {
-  const documentation = `# Airtable Schema Documentation
-
-## Overview
-This document describes the Airtable schema for the Evolve Clinical Study Platform.
-
-## Tables
-
-${tableDefinitions.map(table => `
-### ${table.name}
-**Description:** ${table.description}
-
-**Fields:**
-${table.fields.map(field => `- \`${field.name}\` (${field.type}): ${field.description || 'No description'}`).join('\n')}
-`).join('\n')}
-
-## Field Types
-
-- **singleLineText**: Short text fields
-- **longText**: Long text fields for descriptions and JSON data
-- **email**: Email address fields
-- **number**: Numeric fields
-- **checkbox**: Boolean fields
-- **dateTime**: Date and time fields
-- **singleSelect**: Dropdown selection fields
-
-## Usage
-
-1. **Run the schema updater:**
-   \`\`\`bash
-   npm run update-airtable
-   \`\`\`
-
-2. **Set environment variables (optional):**
-   \`\`\`bash
-   export AIRTABLE_API_KEY="your_api_key"
-   export AIRTABLE_BASE_ID="your_base_id"
-   \`\`\`
-
-3. **Verify the schema:**
-   - Check your Airtable base for the new tables and fields
-   - Ensure all field types are correct
-   - Test data entry and validation
-
-## Notes
-
-- The script will create missing tables and add missing fields
-- Existing data will not be affected
-- Field types cannot be changed after creation
-- The script uses Airtable REST API for better compatibility
-
-## Generated on: ${new Date().toISOString()}
-`;
-
-  const outputDir = path.join(__dirname, '..', 'airtable-schema');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  fs.writeFileSync(
-    path.join(outputDir, 'schema-documentation.md'),
-    documentation
-  );
-
-  console.log(`📄 Schema documentation saved to: ${path.join(outputDir, 'schema-documentation.md')}`);
-}
-
 // Run the script
 async function main() {
-  console.log('🔧 Airtable Schema Updater for Evolve Clinical Study Platform\n');
+  console.log('🔧 Airtable REST API Schema Updater for Evolve Clinical Study Platform\n');
   
   try {
     await updateAirtableSchema();
-    generateSchemaDocumentation();
   } catch (error) {
     console.error('❌ Script execution failed:', error.message);
     process.exit(1);
   }
 }
 
-// Run the main function
 main();

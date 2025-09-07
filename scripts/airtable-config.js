@@ -6,8 +6,8 @@
 
 export const airtableConfig = {
   // Airtable API credentials
-  apiKey: process.env.AIRTABLE_API_KEY || 'your_api_key_here',
-  baseId: process.env.AIRTABLE_BASE_ID || 'your_base_id_here',
+  apiKey: process.env.AIRTABLE_API_KEY || 'patqAwL8qAV4q8DY1.abfe1e456ade37e7c6fcb072b5f3f8cf88472b5699c4fb4a35e9a0f58b46a838',
+  baseId: process.env.AIRTABLE_BASE_ID || 'appsp77OtKyD2ddII',
   
   // Base settings
   baseName: 'Evolve Clinical Study',
