@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/redux';
 import AppLayout from '../AppLayout';
 
@@ -19,27 +19,16 @@ const AdminLayout: React.FC = () => {
     );
   }
 
-<<<<<<< HEAD
   const getPageTitle = (pathname: string) => {
     if (pathname.includes('/admin/users')) return 'User Management';
     if (pathname.includes('/admin/upload')) return 'Upload Content';
     if (pathname.includes('/admin/dashboard')) return 'Dashboard';
     return 'Admin';
-  }
+  };
 
   const breadcrumbs = [
     { label: 'Admin Panel', href: '/admin' },
     { label: getPageTitle(location.pathname) }
-=======
-  const navigation = [
-    { name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' },
-    { name: 'User Management', href: '/admin/users', current: location.pathname === '/admin/users' },
-  ];
-
-  const breadcrumbs = [
-    { label: 'Admin Panel', href: '/admin' },
-    { label: location.pathname === '/admin/dashboard' ? 'Dashboard' : 'User Management' }
->>>>>>> 53706fadde3a9fb649ca1ac5ba4b54556349b7b4
   ];
 
   return (
