@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from './hooks/redux';
 import { checkAuthStatus } from './store/userSlice';
@@ -47,11 +47,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 function App() {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.user);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check authentication status on app load
-    dispatch(checkAuthStatus());
+    dispatch(checkAuthStatus()).finally(() => setIsLoading(false));
   }, [dispatch]);
+
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a spinner component
+  }
 
   return (
     <Router>
@@ -108,7 +113,7 @@ function App() {
           <Route
             path="/shorts"
             element={
-              <ProtectedRoute requireAuth={true}>
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <ShortsPage />
               </ProtectedRoute>
             }
