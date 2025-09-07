@@ -73,12 +73,54 @@ export const createUser = async (userData: {
   }
 };
 
+// Functions from master branch for admin content creation
+export const createContent = async (contentData: {
+  Name: string;
+  Group: 'Group A' | 'Group B';
+  Type: 'Video';
+  URL: string;
+  Order: number;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Content').create(contentData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating content:', error);
+    throw error;
+  }
+};
+
+export const createQuestion = async (questionData: {
+  Text: string;
+  Type: 'multiple-choice' | 'free-text';
+  Video: string[];
+  Order: number;
+  Options?: string;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Questions').create(questionData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating question:', error);
+    throw error;
+  }
+};
+
+
 // Content operations
 export const fetchContentForGroup = async (group: 'Group A' | 'Group B'): Promise<Content[]> => {
   try {
     const records = await base('Content')
       .select({
-        filterByFormula: `{TargetGroup} = "${group}"`, // Changed from Group
+        filterByFormula: `{TargetGroup} = "${group}"`,
         sort: [{ field: 'Order', direction: 'asc' }]
       })
       .all();
@@ -95,8 +137,8 @@ export const fetchOnboardingQuestions = async (): Promise<Question[]> => {
   try {
     const records = await base('Questions')
       .select({
-        filterByFormula: "{Type} = 'Onboarding'", // Changed from OnboardingQuestion
-        sort: [{ field: 'QuestionID', direction: 'asc' }] // Assuming QuestionID for order
+        filterByFormula: "{Type} = 'Onboarding'",
+        sort: [{ field: 'QuestionID', direction: 'asc' }]
       })
       .all();
     
@@ -155,8 +197,8 @@ export const fetchUserProgress = async (userRecordId: string): Promise<UserProgr
 };
 
 export const submitUserResponses = async (responses: Array<{
-  User: string[]; // User record ID
-  Question: string[]; // Question record ID
+  User: string[];
+  Question: string[];
   SelectedAnswer: string;
 }>): Promise<CreateRecordResponse[]> => {
   try {
