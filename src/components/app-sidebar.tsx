@@ -30,14 +30,11 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useSelector } from "react-redux"
+import { RootState } from "@/store"
 
 // Study application data
 const data = {
-  user: {
-    name: "Study Participant",
-    email: "participant@example.com",
-    avatar: "/avatars/participant.jpg",
-  },
   teams: [
     {
       name: "Evolve Study",
@@ -152,6 +149,14 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useSelector((state: RootState) => state.user);
+
+  const navUser = user.airtableRecord ? {
+    name: user.airtableRecord.fields.UserID,
+    email: user.airtableRecord.fields.Email,
+    avatar: "/avatars/participant.jpg",
+  } : null;
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -165,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {navUser && <NavUser user={navUser} />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
