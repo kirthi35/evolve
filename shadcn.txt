@@ -1,0 +1,314 @@
+# shadcn Implementation Guide for Onboarding Questionnaire
+
+## Overview
+This document logs all shadcn component implementations and design system changes made to the onboarding questionnaire component.
+
+## Components Added
+
+### 1. Select Component
+**Command Used:**
+```bash
+npx shadcn@latest add select
+```
+
+**Files Created:**
+- `src/components/ui/select.tsx`
+
+**Implementation:**
+- Replaced native HTML `<select>` elements with shadcn Select components
+- Used `Controller` from react-hook-form for form integration
+- Applied to Gender and Clinical Specialty dropdowns
+
+**Code Pattern:**
+```tsx
+<Controller
+  name="fieldName"
+  control={control}
+  rules={{ required: 'Field is required' }}
+  render={({ field }) => (
+    <Select onValueChange={field.onChange} value={field.value}>
+      <SelectTrigger className="mt-1 w-full">
+        <SelectValue placeholder="Select option" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="option1">Option 1</SelectItem>
+        <SelectItem value="option2">Option 2</SelectItem>
+      </SelectContent>
+    </Select>
+  )}
+/>
+```
+
+### 2. RadioGroup Component
+**Command Used:**
+```bash
+npx shadcn@latest add radio-group
+```
+
+**Files Created:**
+- `src/components/ui/radio-group.tsx`
+
+**Implementation:**
+- Replaced native HTML radio inputs with shadcn RadioGroup components
+- Applied to all radio button sections:
+  - Years of Experience
+  - Prior AI Exposure Classification
+  - Technology Comfort Level
+  - Pre-test Knowledge Assessment questions
+
+**Code Pattern:**
+```tsx
+<Controller
+  name="fieldName"
+  control={control}
+  rules={{ required: 'Field is required' }}
+  render={({ field }) => (
+    <RadioGroup onValueChange={field.onChange} value={field.value} className="mt-2">
+      {options.map((option) => (
+        <div key={option.value} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
+          <RadioGroupItem value={option.value} id={`field-${option.value}`} />
+          <Label 
+            htmlFor={`field-${option.value}`} 
+            className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1"
+          >
+            {option.label}
+          </Label>
+        </div>
+      ))}
+    </RadioGroup>
+  )}
+/>
+```
+
+## Design System Changes
+
+### 1. Color System Migration
+**From Hardcoded Colors to CSS Variables:**
+
+| Old Color | New CSS Variable | Purpose |
+|-----------|------------------|---------|
+| `text-gray-900` | `foreground` | Primary text color |
+| `text-gray-800` | `foreground` | Primary text color |
+| `text-gray-700` | `muted-foreground` | Secondary text color |
+| `text-gray-600` | `muted-foreground` | Secondary text color |
+| `bg-gray-50` | `bg-card` | Card backgrounds |
+| `hover:bg-gray-50` | `hover:bg-accent` | Hover states |
+| `border-gray-200` | `border-border` | Border colors |
+| `border-indigo-200` | `border-border` | Section borders |
+
+### 2. Theme-Aware Styling
+**Before (Hardcoded):**
+```tsx
+className="text-gray-900 border-b-2 border-indigo-200 bg-gray-50 hover:bg-gray-50"
+```
+
+**After (Theme-Aware):**
+```tsx
+className="border-b-2 border-border bg-card hover:bg-accent"
+```
+
+### 3. Component Structure
+**Form Integration Pattern:**
+```tsx
+import { useForm, Controller } from 'react-hook-form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+
+const {
+  register,
+  handleSubmit,
+  control,
+  formState: { errors }
+} = useForm<FormData>();
+```
+
+## Dark Theme Implementation
+
+### 1. CSS Variables Used
+- `foreground` - Primary text color (adapts to theme)
+- `muted-foreground` - Secondary text color (adapts to theme)
+- `border` - Border colors (adapts to theme)
+- `accent` - Hover/active states (adapts to theme)
+- `card` - Card backgrounds (adapts to theme)
+- `background` - Main background (adapts to theme)
+
+### 2. Radio Button Visibility Fix
+**Problem:** Radio buttons were not visible in dark theme
+**Solution:** Used shadcn RadioGroup components with proper theming
+
+**Before:**
+```tsx
+<input
+  type="radio"
+  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+/>
+```
+
+**After:**
+```tsx
+<RadioGroupItem value={value} id={id} />
+```
+
+### 3. Background Consistency
+**Problem:** White backgrounds in dark theme
+**Solution:** Replaced with theme-aware CSS variables
+
+**Before:**
+```tsx
+className="bg-gray-50 border-gray-200"
+```
+
+**After:**
+```tsx
+className="bg-card border-border"
+```
+
+## Mobile Responsiveness
+
+### 1. Responsive Classes Applied
+- `text-sm md:text-base` - Responsive text sizing
+- `p-2 md:p-3` - Responsive padding
+- `space-y-6 md:space-y-8` - Responsive spacing
+- `text-xl md:text-2xl` - Responsive headings
+
+### 2. Touch Target Optimization
+- Increased padding for better mobile interaction
+- Proper spacing between radio buttons
+- Clear visual feedback on hover/touch
+
+## Accessibility Improvements
+
+### 1. Proper Label Association
+```tsx
+<RadioGroupItem value={value} id={`field-${value}`} />
+<Label htmlFor={`field-${value}`}>
+  {label}
+</Label>
+```
+
+### 2. Form Validation
+- All fields use proper validation rules
+- Error messages are clearly displayed
+- Required fields are properly marked
+
+### 3. Keyboard Navigation
+- All interactive elements are keyboard accessible
+- Proper focus states using shadcn components
+- Logical tab order
+
+## File Structure
+
+### Components Used
+```
+src/components/ui/
+├── select.tsx          # Select dropdown component
+├── radio-group.tsx     # Radio button group component
+├── input.tsx           # Text input component
+├── label.tsx           # Label component
+├── button.tsx          # Button component
+├── card.tsx            # Card container component
+└── ...
+```
+
+### Implementation Files
+```
+src/components/dashboard/
+└── OnboardingQuestionnaire.tsx  # Main questionnaire component
+
+src/types/
+└── airtable.ts  # Type definitions updated for form data
+```
+
+## Best Practices Applied
+
+### 1. Form Integration
+- Use `Controller` for complex form components
+- Maintain proper form validation
+- Handle form state correctly
+
+### 2. Theme Consistency
+- Always use CSS variables instead of hardcoded colors
+- Test in both light and dark themes
+- Ensure proper contrast ratios
+
+### 3. Component Composition
+- Compose shadcn components properly
+- Maintain consistent styling patterns
+- Use proper TypeScript types
+
+### 4. Mobile-First Design
+- Start with mobile styles
+- Use responsive prefixes for larger screens
+- Test on various device sizes
+
+## Commands Reference
+
+### Adding shadcn Components
+```bash
+# Add individual components
+npx shadcn@latest add select
+npx shadcn@latest add radio-group
+npx shadcn@latest add input
+npx shadcn@latest add label
+npx shadcn@latest add button
+npx shadcn@latest add card
+
+# Add multiple components at once
+npx shadcn@latest add select radio-group input label button card
+```
+
+### Development Commands
+```bash
+# Start development server
+npm run dev
+
+# Check for linting errors
+npm run lint
+
+# Build for production
+npm run build
+```
+
+## Troubleshooting
+
+### Common Issues
+1. **Radio buttons not visible in dark theme**
+   - Solution: Use shadcn RadioGroup components instead of native HTML
+
+2. **White backgrounds in dark theme**
+   - Solution: Replace hardcoded colors with CSS variables
+
+3. **Form validation not working**
+   - Solution: Ensure proper Controller integration with react-hook-form
+
+4. **Mobile responsiveness issues**
+   - Solution: Use responsive Tailwind classes and test on various devices
+
+### CSS Variables Reference
+```css
+/* Light theme */
+--foreground: 222.2 84% 4.9%;
+--muted-foreground: 215.4 16.3% 46.9%;
+--border: 214.3 31.8% 91.4%;
+--accent: 210 40% 98%;
+--card: 0 0% 100%;
+
+/* Dark theme */
+--foreground: 210 40% 98%;
+--muted-foreground: 215 20.2% 65.1%;
+--border: 217.2 32.6% 17.5%;
+--accent: 217.2 32.6% 17.5%;
+--card: 222.2 84% 4.9%;
+```
+
+## Conclusion
+
+The onboarding questionnaire now fully implements shadcn design system with:
+- ✅ Proper dark theme support
+- ✅ Mobile responsiveness
+- ✅ Accessibility compliance
+- ✅ Consistent styling
+- ✅ Form integration
+- ✅ Professional appearance
+
+All components follow shadcn best practices and provide a seamless user experience across all devices and themes.
