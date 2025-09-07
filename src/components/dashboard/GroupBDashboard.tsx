@@ -5,10 +5,12 @@ import {
   fetchContentForGroup, 
   fetchQuestionsForVideo, 
   submitUserResponses, 
-  updateUserProgress 
+  updateUserProgress,
+  fetchUserProgressForGroup
 } from '../../services/airtableService';
-import type { Content, Question, QuestionnaireFormData } from '../../types/airtable';
+import type { Content, Question, QuestionnaireFormData, UserProgress } from '../../types/airtable';
 import Questionnaire from './Questionnaire';
+import StudyTimeline from './StudyTimeline';
 
 // YouTube Player API types
 declare global {
@@ -20,7 +22,7 @@ declare global {
 
 const GroupBDashboard: React.FC = () => {
   const [content, setContent] = useState<Content[]>([]);
-  const [currentDay, setCurrentDay] = useState(1);
+  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,24 +35,33 @@ const GroupBDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.user);
 
+  const completedDays = userProgress.filter(p => p.fields.Completed).length;
+  const currentDay = completedDays + 1;
+
   // Get current day's video (assuming 7 days total)
   const currentVideo = content[currentDay - 1];
   const totalDays = 7;
 
-  useEffect(() => {
-    const loadContent = async () => {
-      try {
-        const groupBContent = await fetchContentForGroup('Group B');
-        setContent(groupBContent);
-      } catch (error) {
-        console.error('Error loading Group B content:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadData = async () => {
+    if (!user.uid) return;
+    try {
+      setIsLoading(true);
+      const [groupBContent, progress] = await Promise.all([
+        fetchContentForGroup('Group B'),
+        fetchUserProgressForGroup(user.uid, 'Group B')
+      ]);
+      setContent(groupBContent);
+      setUserProgress(progress);
+    } catch (error) {
+      console.error('Error loading Group B data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadContent();
-  }, []);
+  useEffect(() => {
+    loadData();
+  }, [user.uid]);
 
   useEffect(() => {
     // Load YouTube API
@@ -144,12 +155,12 @@ const GroupBDashboard: React.FC = () => {
       if (currentDay >= totalDays) {
         navigate('/complete');
       } else {
-        // Reset for next day
-        setCurrentDay(currentDay + 1);
+        // Reset for next day, and refetch progress
         setShowQuestionnaire(false);
         setCurrentQuestions([]);
         setPlayer(null);
         setVideoCompleted(false);
+        await loadData(); // Refetch progress
       }
     } catch (error) {
       console.error('Error submitting questionnaire:', error);
@@ -159,9 +170,30 @@ const GroupBDashboard: React.FC = () => {
   };
 
   const canWatchToday = () => {
-    // For Group B, users can only watch one video per day
-    // This could be enhanced with actual date tracking
-    return currentDay <= totalDays;
+    if (currentDay > totalDays) {
+      return false;
+    }
+    const lastCompletedVideo = userProgress
+      .filter(p => p.fields.Completed && p.fields.CompletedAt)
+      .sort((a, b) => new Date(b.fields.CompletedAt!).getTime() - new Date(a.fields.CompletedAt!).getTime())[0];
+
+    if (!lastCompletedVideo) {
+      return true; // First day, can always watch.
+    }
+
+    const lastCompletedDate = new Date(lastCompletedVideo.fields.CompletedAt!);
+    const today = new Date();
+
+    // Check if the last completed video was today
+    if (
+      lastCompletedDate.getFullYear() === today.getFullYear() &&
+      lastCompletedDate.getMonth() === today.getMonth() &&
+      lastCompletedDate.getDate() === today.getDate()
+    ) {
+      return false; // Already completed a video today
+    }
+
+    return true;
   };
 
   if (isLoading) {
@@ -190,14 +222,22 @@ const GroupBDashboard: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Study Complete!</h2>
-          <p className="mt-2 text-gray-600">You have completed all 7 days of the study.</p>
-          <button
-            onClick={() => navigate('/complete')}
-            className="mt-4 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            View Completion Page
-          </button>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {currentDay > totalDays ? 'Study Complete!' : "Today's video completed"}
+          </h2>
+          <p className="mt-2 text-gray-600">
+            {currentDay > totalDays
+              ? 'You have completed all 7 days of the study.'
+              : 'Please come back tomorrow for the next video.'}
+          </p>
+          {currentDay > totalDays && (
+            <button
+              onClick={() => navigate('/complete')}
+              className="mt-4 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              View Completion Page
+            </button>
+          )}
         </div>
       </div>
     );
@@ -245,27 +285,7 @@ const GroupBDashboard: React.FC = () => {
           />
         )}
 
-        {/* Progress indicator */}
-        <div className="mt-8 bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Study Progress</h3>
-          <div className="flex items-center space-x-2">
-            {Array.from({ length: totalDays }, (_, index) => (
-              <div
-                key={index}
-                className={`h-3 flex-1 rounded-full ${
-                  index + 1 < currentDay
-                    ? 'bg-green-500'
-                    : index + 1 === currentDay
-                    ? 'bg-indigo-500'
-                    : 'bg-gray-200'
-                }`}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            {currentDay - 1} of {totalDays} days completed
-          </p>
-        </div>
+        <StudyTimeline currentDay={currentDay} totalDays={totalDays} />
       </div>
     </div>
   );

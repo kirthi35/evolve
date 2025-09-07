@@ -3,6 +3,7 @@ import type {
   User, 
   Content, 
   Question, 
+  UserProgress,
   CreateRecordResponse 
 } from '../types/airtable';
 
@@ -155,6 +156,30 @@ export const submitUserResponses = async (responses: Array<{
 };
 
 // User progress operations
+export const fetchUserProgressForGroup = async (uid: string, group: 'Group A' | 'Group B'): Promise<UserProgress[]> => {
+  try {
+    // 1. Fetch all content for the group
+    const groupContent = await fetchContentForGroup(group);
+    const videoIds = groupContent.map(c => c.id);
+
+    if (videoIds.length === 0) {
+      return [];
+    }
+
+    // 2. Fetch all UserProgress records for this user and the videos in this group
+    const records = await base('UserProgress')
+      .select({
+        filterByFormula: `AND({UserID} = "${uid}", OR(${videoIds.map(id => `{VideoID} = "${id}"`).join(',')}))`,
+      })
+      .all();
+
+    return handleAirtableResponse<UserProgress>(records);
+  } catch (error) {
+    console.error('Error fetching user progress for group:', error);
+    throw error;
+  }
+};
+
 export const updateUserProgress = async (progressData: {
   UserID: string;
   VideoID: string;
