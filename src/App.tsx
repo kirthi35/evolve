@@ -11,6 +11,7 @@ import CompletionPage from './pages/CompletionPage';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
+import AdminUploadPage from './pages/AdminUploadPage';
 import ShortsPage from './pages/ShortsPage';
 
 // Protected Route Component
@@ -131,6 +132,7 @@ function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="users" element={<AdminUserManagementPage />} />
+            <Route path="upload" element={<AdminUploadPage />} />
           </Route>
 
           {/* Catch all route */}

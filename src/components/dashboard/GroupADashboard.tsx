@@ -69,8 +69,8 @@ const GroupADashboard: React.FC = () => {
   useEffect(() => {
     if (playerReady && currentVideo && playerRef.current && !player) {
       const newPlayer = new window.YT.Player(playerRef.current, {
-        height: '315',
-        width: '560',
+        height: '100%',
+        width: '100%',
         videoId: currentVideo.fields.YouTubeVideoID,
         playerVars: {
           controls: 1,
@@ -184,26 +184,28 @@ const GroupADashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Group A Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Group A Dashboard</h1>
           <p className="mt-2 text-gray-600">
             Video {currentVideoIndex + 1} of {content.length}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
           {/* Main Video Area */}
           <div className="lg:col-span-2">
             {!showQuestionnaire ? (
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   {currentVideo?.fields.Title}
                 </h2>
                 
                 <div className="mb-4">
-                  <div ref={playerRef}></div>
+                  <div className="relative w-full h-0 pb-[56.25%]">
+                    <div ref={playerRef} className="absolute top-0 left-0 w-full h-full"></div>
+                  </div>
                 </div>
 
                 <div className="mb-4">

@@ -1,4 +1,5 @@
 import Airtable from 'airtable';
+<<<<<<< HEAD
 import type {
   User,
   Content,
@@ -7,6 +8,14 @@ import type {
   UserResponse,
   UserProgress,
   CreateRecordResponse
+=======
+import type { 
+  User, 
+  Content, 
+  Question, 
+  UserProgress,
+  CreateRecordResponse 
+>>>>>>> ce171ad0aa67d5afaf1b6b6186de1f564b2a8feb
 } from '../types/airtable';
 
 // Initialize Airtable with Personal Access Token
@@ -45,6 +54,46 @@ export const fetchUserByFirebaseUID = async (uid: string): Promise<User | null> 
     };
   } catch (error) {
     console.error('Error fetching user by Firebase UID:', error);
+    throw error;
+  }
+};
+
+export const createContent = async (contentData: {
+  Name: string;
+  Group: 'Group A' | 'Group B';
+  Type: 'Video';
+  URL: string;
+  Order: number;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Content').create(contentData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating content:', error);
+    throw error;
+  }
+};
+
+export const createQuestion = async (questionData: {
+  Text: string;
+  Type: 'multiple-choice' | 'free-text';
+  Video: string[];
+  Order: number;
+  Options?: string;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Questions').create(questionData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating question:', error);
     throw error;
   }
 };
@@ -224,11 +273,44 @@ export const submitUserResponses = async (responses: Array<{
 };
 
 // User progress operations
+<<<<<<< HEAD
 export const upsertUserProgress = async (progressData: {
   userRecordId: string;
   videoRecordId: string;
   WatchPercentage: number;
   Status: 'Not Started' | 'In Progress' | 'Completed';
+=======
+export const fetchUserProgressForGroup = async (uid: string, group: 'Group A' | 'Group B'): Promise<UserProgress[]> => {
+  try {
+    // 1. Fetch all content for the group
+    const groupContent = await fetchContentForGroup(group);
+    const videoIds = groupContent.map(c => c.id);
+
+    if (videoIds.length === 0) {
+      return [];
+    }
+
+    // 2. Fetch all UserProgress records for this user and the videos in this group
+    const records = await base('UserProgress')
+      .select({
+        filterByFormula: `AND({UserID} = "${uid}", OR(${videoIds.map(id => `{VideoID} = "${id}"`).join(',')}))`,
+      })
+      .all();
+
+    return handleAirtableResponse<UserProgress>(records);
+  } catch (error) {
+    console.error('Error fetching user progress for group:', error);
+    throw error;
+  }
+};
+
+export const updateUserProgress = async (progressData: {
+  UserID: string;
+  VideoID: string;
+  WatchProgress: number;
+  Completed: boolean;
+  DayNumber?: number;
+>>>>>>> ce171ad0aa67d5afaf1b6b6186de1f564b2a8feb
 }): Promise<CreateRecordResponse> => {
   try {
     const existingRecords = await base('UserProgress')
