@@ -48,6 +48,46 @@ export const fetchUserByFirebaseUID = async (uid: string): Promise<User | null> 
   }
 };
 
+export const createContent = async (contentData: {
+  Name: string;
+  Group: 'Group A' | 'Group B';
+  Type: 'Video';
+  URL: string;
+  Order: number;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Content').create(contentData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating content:', error);
+    throw error;
+  }
+};
+
+export const createQuestion = async (questionData: {
+  Text: string;
+  Type: 'multiple-choice' | 'free-text';
+  Video: string[];
+  Order: number;
+  Options?: string;
+}): Promise<CreateRecordResponse> => {
+  try {
+    const record = await base('Questions').create(questionData);
+    return {
+      id: record.id,
+      fields: record.fields,
+      createdTime: (record as any).createdTime || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error creating question:', error);
+    throw error;
+  }
+};
+
 export const createUser = async (userData: {
   UserID: string;
   Email: string;
