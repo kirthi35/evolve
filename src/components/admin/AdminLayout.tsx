@@ -22,12 +22,11 @@ const AdminLayout: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', current: location.pathname === '/admin/dashboard' },
     { name: 'User Management', href: '/admin/users', current: location.pathname === '/admin/users' },
-    { name: 'Upload Content', href: '/admin/upload', current: location.pathname === '/admin/upload' },
   ];
 
   const breadcrumbs = [
     { label: 'Admin Panel', href: '/admin' },
-    { label: navigation.find(item => item.current)?.name || 'Page' }
+    { label: location.pathname === '/admin/dashboard' ? 'Dashboard' : 'User Management' }
   ];
 
   return (
