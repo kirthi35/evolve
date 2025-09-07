@@ -2,60 +2,75 @@
 
 export interface User {
   id: string;
+  createdTime?: string;
   fields: {
     UserID: string; // Firebase UID
     Email: string;
+    IsAdmin: boolean;
     AssignedGroup: 'Group A' | 'Group B';
     OnboardingCompleted: boolean;
-    IsAdmin: boolean;
-    CreatedAt?: string;
+    LastLogin?: string;
+    UserResponses?: string[]; // Link to UserResponses table
+    Progress?: string[]; // Link to UserProgress table
   };
 }
 
 export interface Content {
   id: string;
   fields: {
+    VideoID: string; // Primary Field
+    YouTubeURL: string;
     Title: string;
-    YouTubeVideoID: string;
-    Group: 'Group A' | 'Group B';
+    TargetGroup: 'Group A' | 'Group B';
     Order: number;
-    Questions?: string[]; // Array of question record IDs
+    Questions?: string[]; // Link to Questions table
+    ReleaseDay?: number; // For Group B's daily content unlock
   };
 }
 
 export interface Question {
   id: string;
   fields: {
+    QuestionID?: number; // Autonumber, if needed for display
     QuestionText: string;
-    Options: string; // JSON string of options array
-    Type: 'single' | 'multiple';
-    Video?: string[]; // Array of content record IDs
-    OnboardingQuestion?: boolean;
+    LinkedVideo?: string[]; // Link to Content table
+    AnswerOptions?: string[]; // Link to AnswerOptions table
+    CorrectAnswer?: string; // The text of the correct option from AnswerOptions
+    Type: 'Onboarding' | 'Video';
+  };
+}
+
+// New table for flexible answer options
+export interface AnswerOption {
+  id: string;
+  fields: {
+    Question: string[]; // Link to the parent Question
+    OptionText: string;
   };
 }
 
 export interface UserResponse {
   id: string;
   fields: {
-    UserID: string; // Firebase UID
-    QuestionID: string;
-    Answer: string;
-    VideoID?: string;
-    SubmittedAt: string;
+    ResponseID?: number; // Autonumber
+    User: string[]; // Link to Users table
+    Question: string[]; // Link to Questions table
+    SelectedAnswer: string;
+    Timestamp: string; // Created time
   };
 }
 
 export interface UserProgress {
   id: string;
   fields: {
-    UserID: string; // Firebase UID
-    VideoID: string;
-    WatchProgress: number; // 0-100
-    Completed: boolean;
-    CompletedAt?: string;
-    DayNumber?: number; // For Group B daily progression
+    ProgressID?: number; // Autonumber
+    User: string[]; // Link to Users table
+    Video: string[]; // Link to Content table
+    WatchPercentage: number; // 0-100
+    Status: 'Not Started' | 'In Progress' | 'Completed';
   };
 }
+
 
 // Form data interfaces
 export interface OnboardingFormData {
@@ -71,14 +86,8 @@ export interface OnboardingFormData {
   priorAIExposure: string;
   techComfortLevel: string;
   
-  // Knowledge Assessment
-  preTestKnowledge: {
-    q1: string;
-    q2: string;
-    q3: string;
-    q4: string;
-    q5: string;
-  };
+  // Knowledge Assessment (maps question record ID to selected answer text)
+  preTestKnowledge: Record<string, string>;
 }
 
 export interface QuestionnaireFormData {

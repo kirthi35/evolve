@@ -7,45 +7,39 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import type { OnboardingFormData } from '../../types/airtable';
+import type { QuestionWithAnswerOptions } from './Questionnaire';
 
 interface OnboardingQuestionnaireProps {
   onSubmit: (data: OnboardingFormData) => void;
   isLoading?: boolean;
+  knowledgeQuestions: QuestionWithAnswerOptions[]; // Questions are now passed as a prop
 }
 
 const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({ 
   onSubmit, 
-  isLoading = false 
+  isLoading = false,
+  knowledgeQuestions = []
 }) => {
   const {
     register,
     handleSubmit,
     control,
     formState: { errors }
-  } = useForm<OnboardingFormData>();
+  } = useForm<OnboardingFormData>({
+    defaultValues: {
+      preTestKnowledge: {}
+    }
+  });
 
   const handleFormSubmit = (data: OnboardingFormData) => {
     onSubmit(data);
   };
 
   const specialties = [
-    'Internal Medicine',
-    'Surgery',
-    'Pediatrics',
-    'Obstetrics & Gynecology',
-    'Psychiatry',
-    'Radiology',
-    'Anesthesiology',
-    'Emergency Medicine',
-    'Family Medicine',
-    'Dermatology',
-    'Ophthalmology',
-    'Orthopedics',
-    'Cardiology',
-    'Neurology',
-    'Oncology',
-    'Pathology',
-    'Other'
+    'Internal Medicine', 'Surgery', 'Pediatrics', 'Obstetrics & Gynecology',
+    'Psychiatry', 'Radiology', 'Anesthesiology', 'Emergency Medicine',
+    'Family Medicine', 'Dermatology', 'Ophthalmology', 'Orthopedics',
+    'Cardiology', 'Neurology', 'Oncology', 'Pathology', 'Other'
   ];
 
   const experienceRanges = [
@@ -70,59 +64,6 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
     { value: '5', label: '5 - Very comfortable' }
   ];
 
-  const knowledgeQuestions = [
-    {
-      id: 'q1',
-      question: 'What is the primary purpose of machine learning in medical imaging?',
-      options: [
-        'To replace radiologists entirely',
-        'To assist radiologists in detecting abnormalities',
-        'To reduce the need for medical imaging',
-        'To increase radiation exposure'
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Which of the following is NOT a common application of AI in healthcare?',
-      options: [
-        'Drug discovery',
-        'Patient monitoring',
-        'Replacing all human doctors',
-        'Medical image analysis'
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'What does "bias" refer to in AI systems?',
-      options: [
-        'The speed of AI processing',
-        'Systematic unfairness in AI predictions',
-        'The cost of AI implementation',
-        'The accuracy of AI models'
-      ]
-    },
-    {
-      id: 'q4',
-      question: 'Which regulatory body oversees AI medical devices in the US?',
-      options: [
-        'CDC',
-        'FDA',
-        'WHO',
-        'NIH'
-      ]
-    },
-    {
-      id: 'q5',
-      question: 'What is the main advantage of AI-assisted diagnosis?',
-      options: [
-        'Complete elimination of human error',
-        'Reduction in healthcare costs only',
-        'Improved accuracy and efficiency in diagnosis',
-        'Faster patient discharge'
-      ]
-    }
-  ];
-
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
       <Card>
@@ -142,37 +83,18 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
               <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
                 Demographics
               </h3>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="age" className="text-sm font-semibold">
-                    Age *
-                  </Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    {...register('age', { required: 'Age is required' })}
-                    className="mt-1"
-                    placeholder="Enter your age"
-                  />
-                  {errors.age && (
-                    <p className="mt-1 text-sm text-red-600">{errors.age.message}</p>
-                  )}
+                  <Label htmlFor="age" className="text-sm font-semibold">Age *</Label>
+                  <Input id="age" type="number" {...register('age', { required: 'Age is required' })} className="mt-1" placeholder="Enter your age" />
+                  {errors.age && <p className="mt-1 text-sm text-red-600">{errors.age.message}</p>}
                 </div>
-                
                 <div>
-                  <Label htmlFor="gender" className="text-sm font-semibold">
-                    Gender *
-                  </Label>
-                  <Controller
-                    name="gender"
-                    control={control}
-                    rules={{ required: 'Gender is required' }}
+                  <Label htmlFor="gender" className="text-sm font-semibold">Gender *</Label>
+                  <Controller name="gender" control={control} rules={{ required: 'Gender is required' }}
                     render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className="mt-1 w-full">
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
+                        <SelectTrigger className="mt-1 w-full"><SelectValue placeholder="Select gender" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="male">Male</SelectItem>
                           <SelectItem value="female">Female</SelectItem>
@@ -182,103 +104,59 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                       </Select>
                     )}
                   />
-                  {errors.gender && (
-                    <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
-                  )}
+                  {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>}
                 </div>
               </div>
             </div>
 
             {/* Professional Information Section */}
             <div className="space-y-4">
-              <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
-                Professional Information
-              </h3>
-              
+              <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">Professional Information</h3>
               <div>
-                <Label htmlFor="specialty" className="text-sm font-semibold">
-                  Clinical Specialty *
-                </Label>
-                <Controller
-                  name="specialty"
-                  control={control}
-                  rules={{ required: 'Specialty is required' }}
+                <Label htmlFor="specialty" className="text-sm font-semibold">Clinical Specialty *</Label>
+                <Controller name="specialty" control={control} rules={{ required: 'Specialty is required' }}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="mt-1 w-full">
-                        <SelectValue placeholder="Select your specialty" />
-                      </SelectTrigger>
+                      <SelectTrigger className="mt-1 w-full"><SelectValue placeholder="Select your specialty" /></SelectTrigger>
                       <SelectContent>
-                        {specialties.map((specialty) => (
-                          <SelectItem key={specialty} value={specialty}>
-                            {specialty}
-                          </SelectItem>
-                        ))}
+                        {specialties.map((specialty) => <SelectItem key={specialty} value={specialty}>{specialty}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.specialty && (
-                  <p className="mt-1 text-sm text-red-600">{errors.specialty.message}</p>
-                )}
+                {errors.specialty && <p className="mt-1 text-sm text-red-600">{errors.specialty.message}</p>}
               </div>
-              
               <div>
-                <Label className="text-sm font-semibold">
-                  Years of Experience *
-                </Label>
-                <Controller
-                  name="yearsOfExperience"
-                  control={control}
-                  rules={{ required: 'Years of experience is required' }}
+                <Label className="text-sm font-semibold">Years of Experience *</Label>
+                <Controller name="yearsOfExperience" control={control} rules={{ required: 'Years of experience is required' }}
                   render={({ field }) => (
                     <RadioGroup onValueChange={field.onChange} value={field.value} className="mt-2">
                       {experienceRanges.map((range) => (
                         <div key={range.value} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
                           <RadioGroupItem value={range.value} id={`experience-${range.value}`} />
-                          <Label 
-                            htmlFor={`experience-${range.value}`} 
-                            className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1"
-                          >
-                            {range.label}
-                          </Label>
+                          <Label htmlFor={`experience-${range.value}`} className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1">{range.label}</Label>
                         </div>
                       ))}
                     </RadioGroup>
                   )}
                 />
-                {errors.yearsOfExperience && (
-                  <p className="mt-1 text-sm text-red-600">{errors.yearsOfExperience.message}</p>
-                )}
+                {errors.yearsOfExperience && <p className="mt-1 text-sm text-red-600">{errors.yearsOfExperience.message}</p>}
               </div>
             </div>
 
             {/* AI Exposure Section */}
             <div className="space-y-4">
-              <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
-                Prior AI Exposure
-              </h3>
-              
+              <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">Prior AI Exposure</h3>
               <div>
-                <Label className="text-sm font-semibold">
-                  Prior AI Exposure Classification *
-                </Label>
-                <Controller
-                  name="priorAIExposure"
-                  control={control}
-                  rules={{ required: 'AI exposure level is required' }}
+                <Label className="text-sm font-semibold">Prior AI Exposure Classification *</Label>
+                <Controller name="priorAIExposure" control={control} rules={{ required: 'AI exposure level is required' }}
                   render={({ field }) => (
                     <RadioGroup onValueChange={field.onChange} value={field.value} className="mt-2">
                       {aiExposureLevels.map((level) => (
                         <div key={level.value} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
                           <RadioGroupItem value={level.value} id={`ai-exposure-${level.value}`} className="mt-1" />
                           <div className="flex-1">
-                            <Label 
-                              htmlFor={`ai-exposure-${level.value}`} 
-                              className="font-semibold text-sm md:text-base cursor-pointer block"
-                            >
-                              {level.label.split(' - ')[0]}
-                            </Label>
+                            <Label htmlFor={`ai-exposure-${level.value}`} className="font-semibold text-sm md:text-base cursor-pointer block">{level.label.split(' - ')[0]}</Label>
                             <p className="text-muted-foreground text-xs md:text-sm mt-1 leading-relaxed">{level.label.split(' - ')[1]}</p>
                           </div>
                         </div>
@@ -286,42 +164,27 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     </RadioGroup>
                   )}
                 />
-                {errors.priorAIExposure && (
-                  <p className="mt-1 text-sm text-red-600">{errors.priorAIExposure.message}</p>
-                )}
+                {errors.priorAIExposure && <p className="mt-1 text-sm text-red-600">{errors.priorAIExposure.message}</p>}
               </div>
-              
               <div>
-                <Label className="text-sm font-semibold">
-                  Technology Comfort Level (1-5 scale) *
-                </Label>
-                <Controller
-                  name="techComfortLevel"
-                  control={control}
-                  rules={{ required: 'Tech comfort level is required' }}
+                <Label className="text-sm font-semibold">Technology Comfort Level (1-5 scale) *</Label>
+                <Controller name="techComfortLevel" control={control} rules={{ required: 'Tech comfort level is required' }}
                   render={({ field }) => (
                     <RadioGroup onValueChange={field.onChange} value={field.value} className="mt-2">
                       {techComfortLevels.map((level) => (
                         <div key={level.value} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
                           <RadioGroupItem value={level.value} id={`tech-comfort-${level.value}`} />
-                          <Label 
-                            htmlFor={`tech-comfort-${level.value}`} 
-                            className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1"
-                          >
-                            {level.label}
-                          </Label>
+                          <Label htmlFor={`tech-comfort-${level.value}`} className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1">{level.label}</Label>
                         </div>
                       ))}
                     </RadioGroup>
                   )}
                 />
-                {errors.techComfortLevel && (
-                  <p className="mt-1 text-sm text-red-600">{errors.techComfortLevel.message}</p>
-                )}
+                {errors.techComfortLevel && <p className="mt-1 text-sm text-red-600">{errors.techComfortLevel.message}</p>}
               </div>
             </div>
 
-            {/* Pre-test Knowledge Section */}
+            {/* Pre-test Knowledge Section (now dynamic) */}
             <div className="space-y-4">
               <h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
                 Pre-test Knowledge Assessment
@@ -334,7 +197,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                 {knowledgeQuestions.map((q, index) => (
                   <div key={q.id} className="border border-border rounded-lg p-3 md:p-4 bg-card">
                     <h4 className="text-sm md:text-base font-semibold mb-3 md:mb-4 leading-tight">
-                      {index + 1}. {q.question}
+                      {index + 1}. {q.fields.QuestionText}
                     </h4>
                     <Controller
                       name={`preTestKnowledge.${q.id}`}
@@ -342,14 +205,11 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                       rules={{ required: 'Please select an answer' }}
                       render={({ field }) => (
                         <RadioGroup onValueChange={field.onChange} value={field.value} className="mt-2">
-                          {q.options.map((option, optionIndex) => (
-                            <div key={optionIndex} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
-                              <RadioGroupItem value={option} id={`${q.id}-${optionIndex}`} />
-                              <Label 
-                                htmlFor={`${q.id}-${optionIndex}`} 
-                                className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1"
-                              >
-                                {option}
+                          {q.answerOptions.map((option, optionIndex) => (
+                            <div key={option.id} className="flex items-start space-x-3 p-2 md:p-3 rounded-md hover:bg-accent transition-colors">
+                              <RadioGroupItem value={option.fields.OptionText} id={`${q.id}-${optionIndex}`} />
+                              <Label htmlFor={`${q.id}-${optionIndex}`} className="font-medium text-sm md:text-base leading-relaxed cursor-pointer flex-1">
+                                {option.fields.OptionText}
                               </Label>
                             </div>
                           ))}
@@ -358,7 +218,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
                     />
                     {errors.preTestKnowledge?.[q.id] && (
                       <p className="mt-2 text-sm text-red-600">
-                        {errors.preTestKnowledge[q.id]?.message}
+                        Please select an answer.
                       </p>
                     )}
                   </div>
@@ -368,11 +228,7 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
 
             {/* Submit Button */}
             <div className="pt-4 md:pt-6 border-t">
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 md:py-4 text-base md:text-lg font-medium"
-              >
+              <Button type="submit" disabled={isLoading} className="w-full py-3 md:py-4 text-base md:text-lg font-medium">
                 {isLoading ? 'Submitting...' : 'Complete Onboarding'}
               </Button>
             </div>
