@@ -83,6 +83,10 @@ const data = {
           title: "Study Materials",
           url: "/content/materials",
         },
+        {
+          title: "Shorts",
+          url: "/shorts",
+        },
       ],
     },
     {

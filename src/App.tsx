@@ -11,6 +11,7 @@ import CompletionPage from './pages/CompletionPage';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
+import ShortsPage from './pages/ShortsPage';
 
 // Protected Route Component
 interface ProtectedRouteProps {
@@ -102,6 +103,15 @@ function App() {
                 <CompletionPage />
               </ProtectedRoute>
             } 
+          />
+
+          <Route
+            path="/shorts"
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <ShortsPage />
+              </ProtectedRoute>
+            }
           />
 
           {/* Admin Routes */}
