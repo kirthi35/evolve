@@ -10,9 +10,9 @@ import {
   fetchUserProgress,
 } from '../../services/airtableService';
 import type { Content, UserProgress, QuestionnaireFormData } from '../../types/airtable';
-import Questionnaire, { QuestionWithAnswerOptions } from './Questionnaire';
-import { Button } from '../ui/button';
+import Questionnaire, { type QuestionWithAnswerOptions } from './Questionnaire';
 import { Skeleton } from '../ui/skeleton';
+import { Button } from '../ui/button';
 import StudyTimeline from './StudyTimeline';
 
 declare global {
