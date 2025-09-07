@@ -106,4 +106,4 @@ This document describes the Airtable schema for the Evolve Clinical Study Platfo
 - Field types cannot be changed after creation
 - The script uses Airtable REST API for better compatibility
 
-## Generated on: 2025-09-07T18:40:45.587Z
+## Generated on: 2025-09-07T18:54:27.867Z

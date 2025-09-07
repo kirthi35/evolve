@@ -9,34 +9,37 @@ export interface User {
     IsAdmin: boolean;
     AssignedGroup: 'Group A' | 'Group B';
     OnboardingCompleted: boolean;
-    LastLogin?: string;
+    LastLogin?: string; // Optional - set when user logs in
+    OnboardingData?: string; // JSON string of onboarding responses
     UserResponses?: string[]; // Link to UserResponses table
     Progress?: string[]; // Link to UserProgress table
   };
 }
 
-export interface Content {
+export interface ContentItem {
   id: string;
+  createdTime?: string;
   fields: {
-    VideoID: string; // Primary Field
-    YouTubeURL: string;
     Title: string;
     TargetGroup: 'Group A' | 'Group B';
+    YouTubeURL: string;
     Order: number;
     Questions?: string[]; // Link to Questions table
-    ReleaseDay?: number; // For Group B's daily content unlock
+    UserProgress?: string[]; // Link to UserProgress table
   };
 }
 
 export interface Question {
   id: string;
+  createdTime?: string;
   fields: {
-    QuestionID?: number; // Autonumber, if needed for display
     QuestionText: string;
     LinkedVideo?: string[]; // Link to Content table
-    AnswerOptions?: string[]; // Link to AnswerOptions table
-    CorrectAnswer?: string; // The text of the correct option from AnswerOptions
-    Type: 'Onboarding' | 'Video';
+    OptionA: string;
+    OptionB: string;
+    OptionC: string;
+    OptionD: string;
+    UserResponses?: string[]; // Link to UserResponses table
   };
 }
 
@@ -70,7 +73,6 @@ export interface UserProgress {
     Status: 'Not Started' | 'In Progress' | 'Completed';
   };
 }
-
 
 // Form data interfaces
 export interface OnboardingFormData {

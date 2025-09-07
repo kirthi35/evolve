@@ -47,6 +47,7 @@ const AdminDashboardPage: React.FC = () => {
         </p>
       </div>
 
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -195,7 +196,7 @@ const AdminDashboardPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.fields.CreatedAt ? new Date(user.fields.CreatedAt).toLocaleDateString() : 'N/A'}
+                      {user.createdTime ? new Date(user.createdTime).toLocaleDateString() : 'N/A'}
                     </td>
                   </tr>
                 ))}

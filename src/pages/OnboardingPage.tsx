@@ -32,7 +32,7 @@ const OnboardingPage: React.FC = () => {
         AssignedGroup: assignedGroup,
         OnboardingCompleted: true,
         IsAdmin: false,
-        // Store onboarding responses
+        // Store onboarding responses (optional field)
         OnboardingData: JSON.stringify(data)
       };
 

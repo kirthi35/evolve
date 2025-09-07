@@ -31,7 +31,9 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useSelector } from "react-redux"
-import { RootState } from "@/store"
+import { store } from "../store/index"
+
+type RootState = ReturnType<typeof store.getState>
 
 // Study application data
 const data = {
