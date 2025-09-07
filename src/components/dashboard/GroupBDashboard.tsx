@@ -12,6 +12,7 @@ import {
 import type { Content, UserProgress, QuestionnaireFormData } from '../../types/airtable';
 import Questionnaire, { QuestionWithAnswerOptions } from './Questionnaire';
 import { Skeleton } from '../ui/skeleton';
+import StudyTimeline from './StudyTimeline';
 
 declare global {
   interface Window { YT: any; onYouTubeIframeAPIReady: () => void; }
@@ -116,8 +117,7 @@ const GroupBDashboard: React.FC = () => {
         setQuestions(questionsWithOptions);
         setShowQuestionnaire(true);
       } else {
-        // No questions, progression is automatic
-        navigate(0); // Refresh to show "come back tomorrow"
+        navigate(0);
       }
     } catch (error) {
       console.error('Error handling video completion:', error);
@@ -139,7 +139,6 @@ const GroupBDashboard: React.FC = () => {
       if (journeyDay >= totalDays) {
         navigate('/complete');
       } else {
-        // Refresh page to show "come back tomorrow" message
         navigate(0);
       }
     } catch (error) {
@@ -206,6 +205,9 @@ const GroupBDashboard: React.FC = () => {
           isLoading={isSubmitting}
         />
       )}
+      <div className="mt-8">
+        <StudyTimeline currentDay={journeyDay} totalDays={totalDays} />
+      </div>
     </div>
   );
 };
