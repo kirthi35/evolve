@@ -107,7 +107,7 @@ function App() {
     }, 15000); // 15 second timeout (increased for two API calls)
     
     return () => clearTimeout(timeout);
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   // Debug logging for loading state
   console.log('🖥️  APP: Current state snapshot:', { 
