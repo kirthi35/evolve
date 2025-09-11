@@ -27,31 +27,45 @@ const AuthenticationPage: React.FC = () => {
     reset
   } = useForm<AuthFormData>();
 
+  // Debug logging for button state (after useForm initialization)
+  console.log('🔐 AUTH_PAGE: Render state:', { 
+    isSignUp, 
+    isLoading,
+    formErrors: Object.keys(errors || {}).length > 0
+  });
+
   const handleGoogleSignIn = async () => {
+    console.log('🔐 AUTH_PAGE: Google sign in button clicked');
     try {
       setIsLoading(true);
+      console.log('🔐 AUTH_PAGE: Starting Google sign in...');
       const user = await signInWithGoogle();
+      console.log('🔐 AUTH_PAGE: Google sign in successful:', { uid: user.uid, email: user.email });
       dispatch(setUser({ uid: user.uid, email: user.email || '' }));
       navigate('/onboarding');
     } catch (error) {
+      console.error('🔐 AUTH_PAGE: Google sign in error:', error);
       dispatch(setError('Failed to sign in with Google'));
-      console.error('Google sign in error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const onSubmit = async (data: AuthFormData) => {
+    console.log('🔐 AUTH_PAGE: Form submit clicked', { isSignUp, email: data.email });
     try {
       setIsLoading(true);
       let user;
       
       if (isSignUp) {
+        console.log('🔐 AUTH_PAGE: Starting email sign up...');
         user = await signUpWithEmail(data.email, data.password);
       } else {
+        console.log('🔐 AUTH_PAGE: Starting email sign in...');
         user = await signInWithEmail(data.email, data.password);
       }
       
+      console.log('🔐 AUTH_PAGE: Email auth successful:', { uid: user.uid, email: user.email });
       dispatch(setUser({ uid: user.uid, email: user.email || '' }));
       navigate('/onboarding');
     } catch (error: any) {

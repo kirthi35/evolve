@@ -56,8 +56,21 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [forceShowApp, setForceShowApp] = useState(false);
 
+  // Reset loading states when user authentication changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('🔄 APP: User not authenticated, resetting loading states');
+      setIsLoading(false);
+      setForceShowApp(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     console.log('🎬 APP: useEffect triggered, dispatching checkAuthStatus...');
+    
+    // Reset loading states at the start
+    setIsLoading(true);
+    setForceShowApp(false);
     
     // Step 1: Check Firebase authentication
     dispatch(checkAuthStatus())

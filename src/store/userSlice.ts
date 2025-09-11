@@ -148,6 +148,7 @@ const userSlice = createSlice({
       console.log('✅ MANUAL_REDUCER: airtableStatus set to succeeded');
     },
     clearUser: (state) => {
+      console.log('🧹 REDUCER: clearUser - Resetting all user state to initial values');
       state.user = {
         uid: null,
         email: null,
@@ -158,6 +159,7 @@ const userSlice = createSlice({
       state.airtableStatus = 'idle';
       state.isAuthenticated = false;
       state.error = null;
+      console.log('🧹 REDUCER: User state cleared successfully');
     },
     setError: (state, action: PayloadAction<string>) => {
       state.error = action.payload;

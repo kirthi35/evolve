@@ -206,7 +206,7 @@ const GroupBDashboard: React.FC = () => {
     }
     
     console.log('GroupB: Creating YouTube player');
-    setIsVideoLoading(true);
+    // Note: isVideoLoading is already set to true in handleConfirmPlay
     
     try {
       const newPlayer = new window.YT.Player(playerRef.current, {
@@ -256,13 +256,34 @@ const GroupBDashboard: React.FC = () => {
     console.log('GroupB: User confirmed play, closing dialog');
     setShowWarningDialog(false);
     
-    // Add a small delay to ensure the DOM element is ready after dialog closes
+    // Set loading state first to ensure the player div is rendered
+    setIsVideoLoading(true);
+    
+    // Add a delay to ensure the DOM element is ready after state change
     setTimeout(() => {
-      console.log('GroupB: Attempting to create player after dialog close');
+      console.log('GroupB: Attempting to create player after state change');
+      console.log('GroupB: Player ref status:', !!playerRef.current);
+      
+      if (!playerRef.current) {
+        console.error('GroupB: playerRef.current is still null after delay, retrying...');
+        // Retry after another short delay
+        setTimeout(() => {
+          console.log('GroupB: Retry - Player ref status:', !!playerRef.current);
+          if (window.YT && window.YT.Player && playerRef.current) {
+            createPlayer();
+          } else {
+            console.error('GroupB: Still unable to create player after retry');
+            setIsVideoLoading(false);
+          }
+        }, 200);
+        return;
+      }
+      
       if (window.YT && window.YT.Player) {
         createPlayer();
       } else {
         console.error('GroupB: YouTube API not ready in handleConfirmPlay');
+        setIsVideoLoading(false);
       }
     }, 100);
   };
@@ -431,7 +452,7 @@ const GroupBDashboard: React.FC = () => {
                 </div>
               </div>
             ) : (
-              // Show actual video player
+              // Show actual video player (always render once video starts loading or playing)
               <div ref={setPlayerRef} className="w-full aspect-video bg-black rounded" />
             )}
             
