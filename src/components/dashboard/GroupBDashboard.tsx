@@ -39,6 +39,7 @@ const GroupBDashboard: React.FC = () => {
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [videoStarted, setVideoStarted] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [isYtApiReady, setIsYtApiReady] = useState(() => typeof window !== 'undefined' && !!window.YT);
   const playerRef = useRef<HTMLDivElement>(null);
   
   // Callback ref to ensure we know when the element is available
@@ -150,8 +151,8 @@ const GroupBDashboard: React.FC = () => {
   }, [user.airtableRecord]);
 
   useEffect(() => {
-    console.log('GroupB: YouTube API useEffect triggered, window.YT exists:', !!window.YT);
-    
+    console.log('GroupB: YouTube API useEffect triggered, window.YT exists:', !!window.YT, 'isYtApiReady:', isYtApiReady);
+
     if (!window.YT) {
       console.log('GroupB: Loading YouTube API script');
       const tag = document.createElement('script');
@@ -159,9 +160,11 @@ const GroupBDashboard: React.FC = () => {
       document.body.appendChild(tag);
       window.onYouTubeIframeAPIReady = () => {
         console.log('GroupB: YouTube API is ready');
+        setIsYtApiReady(true);
       };
-    } else {
-      console.log('GroupB: YouTube API already loaded');
+    } else if (!isYtApiReady) {
+      console.log('GroupB: YouTube API already loaded, setting state');
+      setIsYtApiReady(true);
     }
     
     // Cleanup function to destroy player when component unmounts
@@ -171,7 +174,15 @@ const GroupBDashboard: React.FC = () => {
         player.destroy();
       }
     };
-  }, [player]);
+  }, [player, isYtApiReady]);
+
+  // Effect to create the player when conditions are right
+  useEffect(() => {
+    if (isVideoLoading && isYtApiReady && !player && playerRef.current) {
+      console.log('GroupB: Conditions met, creating player via useEffect.');
+      createPlayer();
+    }
+  }, [isVideoLoading, isYtApiReady, player]);
 
   const createPlayer = () => {
     console.log('GroupB: createPlayer called', { 
@@ -256,36 +267,8 @@ const GroupBDashboard: React.FC = () => {
     console.log('GroupB: User confirmed play, closing dialog');
     setShowWarningDialog(false);
     
-    // Set loading state first to ensure the player div is rendered
+    // Set loading state to trigger player creation effect
     setIsVideoLoading(true);
-    
-    // Add a delay to ensure the DOM element is ready after state change
-    setTimeout(() => {
-      console.log('GroupB: Attempting to create player after state change');
-      console.log('GroupB: Player ref status:', !!playerRef.current);
-      
-      if (!playerRef.current) {
-        console.error('GroupB: playerRef.current is still null after delay, retrying...');
-        // Retry after another short delay
-        setTimeout(() => {
-          console.log('GroupB: Retry - Player ref status:', !!playerRef.current);
-          if (window.YT && window.YT.Player && playerRef.current) {
-            createPlayer();
-          } else {
-            console.error('GroupB: Still unable to create player after retry');
-            setIsVideoLoading(false);
-          }
-        }, 200);
-        return;
-      }
-      
-      if (window.YT && window.YT.Player) {
-        createPlayer();
-      } else {
-        console.error('GroupB: YouTube API not ready in handleConfirmPlay');
-        setIsVideoLoading(false);
-      }
-    }, 100);
   };
 
   const handleCancelPlay = () => {
@@ -443,17 +426,19 @@ const GroupBDashboard: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            ) : isVideoLoading ? (
-              // Show loading state
-              <div className="w-full aspect-video bg-black rounded flex items-center justify-center">
-                <div className="text-white text-center space-y-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-                  <p>Loading video...</p>
-                </div>
-              </div>
             ) : (
-              // Show actual video player (always render once video starts loading or playing)
-              <div ref={setPlayerRef} className="w-full aspect-video bg-black rounded" />
+              // Show player container with optional loading overlay
+              <div className="relative w-full aspect-video bg-black rounded">
+                <div ref={setPlayerRef} className="w-full h-full" />
+                {isVideoLoading && (
+                  <div className="absolute inset-0 bg-black flex items-center justify-center">
+                    <div className="text-white text-center space-y-4">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+                      <p>Loading video...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             
             <div className="mt-4 space-y-2">
