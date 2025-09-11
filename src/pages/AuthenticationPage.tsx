@@ -32,7 +32,7 @@ const AuthenticationPage: React.FC = () => {
       setIsLoading(true);
       const user = await signInWithGoogle();
       dispatch(setUser({ uid: user.uid, email: user.email || '' }));
-      navigate('/onboarding');
+      navigate('/');
     } catch (error) {
       dispatch(setError('Failed to sign in with Google'));
       console.error('Google sign in error:', error);
@@ -53,7 +53,7 @@ const AuthenticationPage: React.FC = () => {
       }
       
       dispatch(setUser({ uid: user.uid, email: user.email || '' }));
-      navigate('/onboarding');
+      navigate('/');
     } catch (error: any) {
       let errorMessage = 'Authentication failed';
       
