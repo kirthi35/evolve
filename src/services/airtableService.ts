@@ -25,18 +25,50 @@ const handleAirtableResponse = <T>(records: readonly any[]): T[] => {
 // User operations
 export const fetchUserByFirebaseUID = async (uid: string): Promise<User | null> => {
   try {
+    console.log('Fetching user by Firebase UID:', uid);
+    
+    // Get ALL records for this UID to handle duplicates properly
     const records = await base('Users')
       .select({
-        filterByFormula: `{UserID} = "${uid}"`,
-        maxRecords: 1
+        filterByFormula: `{UserID} = "${uid}"`
+        // Note: Removed sort by 'Created' field as it doesn't exist
+        // We'll handle record selection logic in JavaScript below
       })
-      .firstPage();
+      .all();
+    
+    console.log('Found records for UID:', records.length);
     
     if (records.length === 0) {
+      console.log('No user found in Airtable for UID:', uid);
       return null;
     }
     
-    const record = records[0];
+    // Sort records by creation time (most recent first)
+    const sortedRecords = [...records].sort((a: any, b: any) => {
+      const timeA = new Date(a.createdTime || 0).getTime();
+      const timeB = new Date(b.createdTime || 0).getTime();
+      return timeB - timeA; // Most recent first
+    });
+    
+    // If multiple records, log them and choose the best one
+    if (sortedRecords.length > 1) {
+      console.warn(`⚠️  Found ${sortedRecords.length} duplicate records for UID ${uid}:`);
+      sortedRecords.forEach((record, index) => {
+        console.log(`   ${index + 1}. ${record.id} - Group: ${record.fields.AssignedGroup} - Email: ${record.fields.Email} - Created: ${(record as any).createdTime}`);
+      });
+      
+      // Prefer the most recent record with onboarding completed
+      const completedRecords = sortedRecords.filter(r => r.fields.OnboardingCompleted);
+      const selectedRecord = completedRecords.length > 0 ? completedRecords[0] : sortedRecords[0];
+      
+      console.log(`✅ Selected record: ${selectedRecord.id} (Group: ${selectedRecord.fields.AssignedGroup})`);
+    }
+    
+    const record = sortedRecords.length > 1 ? 
+      (sortedRecords.filter(r => r.fields.OnboardingCompleted)[0] || sortedRecords[0]) : 
+      sortedRecords[0];
+      
+    console.log('User record found:', { id: record.id, email: record.fields.Email, group: record.fields.AssignedGroup });
     return {
       id: record.id,
       createdTime: (record as any).createdTime || new Date().toISOString(),
@@ -144,10 +176,8 @@ export const createUser = async (userData: {
   OnboardingData?: string;
 }): Promise<CreateRecordResponse> => {
   try {
-    // Prepare data for Airtable, excluding OnboardingData if it causes issues
-    const { OnboardingData, ...airtableData } = userData;
-    
-    const record = await base('Users').create(airtableData);
+    // Create user record in Airtable with all data
+    const record = await base('Users').create(userData);
     
     return {
       id: record.id,
@@ -156,6 +186,55 @@ export const createUser = async (userData: {
     };
   } catch (error) {
     console.error('Error creating user:', error);
+    throw error;
+  }
+};
+
+export const upsertUser = async (userData: {
+  UserID: string;
+  Email: string;
+  AssignedGroup: 'Group A' | 'Group B';
+  OnboardingCompleted: boolean;
+  IsAdmin: boolean;
+  OnboardingData?: string;
+}): Promise<CreateRecordResponse> => {
+  try {
+    console.log('Upserting user:', userData.UserID, userData.Email);
+    
+    // Check if user already exists
+    const existingUser = await fetchUserByFirebaseUID(userData.UserID);
+    
+    if (existingUser) {
+      console.log('User exists, checking onboarding status:', existingUser.fields.OnboardingCompleted);
+      
+      if (existingUser.fields.OnboardingCompleted) {
+        console.log('User already completed onboarding, returning existing record');
+        return {
+          id: existingUser.id,
+          fields: existingUser.fields as any,
+          createdTime: existingUser.createdTime || new Date().toISOString()
+        };
+      } else {
+        console.log('User exists but onboarding not complete, updating record');
+        const updatedRecord = await base('Users').update(existingUser.id, {
+          OnboardingCompleted: userData.OnboardingCompleted,
+          OnboardingData: userData.OnboardingData,
+          // Don't change AssignedGroup if it was already set
+          ...(existingUser.fields.AssignedGroup ? {} : { AssignedGroup: userData.AssignedGroup })
+        });
+        
+        return {
+          id: updatedRecord.id,
+          fields: updatedRecord.fields,
+          createdTime: (updatedRecord as any).createdTime || existingUser.createdTime
+        };
+      }
+    } else {
+      console.log('User does not exist, creating new record');
+      return await createUser(userData);
+    }
+  } catch (error) {
+    console.error('Error upserting user:', error);
     throw error;
   }
 };
@@ -276,30 +355,43 @@ export const upsertUserProgress = async (progressData: {
   Status: 'Not Started' | 'In Progress' | 'Completed';
 }): Promise<CreateRecordResponse> => {
   try {
+    console.log('Upserting user progress:', progressData);
+    
+    // Check for existing records with more detailed logging
+    const filterFormula = `AND(FIND('${progressData.userRecordId}', ARRAYJOIN({User})), FIND('${progressData.videoRecordId}', ARRAYJOIN({Video})))`;
+    console.log('Filter formula:', filterFormula);
+    
     const existingRecords = await base('UserProgress')
       .select({
-        filterByFormula: `AND(FIND('${progressData.userRecordId}', ARRAYJOIN({User})), FIND('${progressData.videoRecordId}', ARRAYJOIN({Video})))`,
+        filterByFormula: filterFormula,
         maxRecords: 1
       })
       .firstPage();
     
+    console.log('Existing records found:', existingRecords.length);
+    
     if (existingRecords.length > 0) {
+      console.log('Updating existing record:', existingRecords[0].id);
       const record = await base('UserProgress').update(existingRecords[0].id, {
         WatchPercentage: progressData.WatchPercentage,
         Status: progressData.Status,
       });
+      console.log('Updated record:', record.id, record.fields);
       return { id: record.id, fields: record.fields, createdTime: (record as any).createdTime };
     } else {
+      console.log('Creating new progress record');
       const record = await base('UserProgress').create({
         User: [progressData.userRecordId],
         Video: [progressData.videoRecordId],
         WatchPercentage: progressData.WatchPercentage,
         Status: progressData.Status,
       });
+      console.log('Created new record:', record.id, record.fields);
       return { id: record.id, fields: record.fields, createdTime: (record as any).createdTime };
     }
   } catch (error) {
     console.error('Error upserting user progress:', error);
+    console.error('Progress data that failed:', progressData);
     throw error;
   }
 };

@@ -24,6 +24,7 @@ export interface ContentItem {
     TargetGroup: 'Group A' | 'Group B';
     YouTubeURL: string;
     Order: number;
+    ReleaseDay?: number; // Day when this content should be released
     Questions?: string[]; // Link to Questions table
     UserProgress?: string[]; // Link to UserProgress table
   };
@@ -39,6 +40,7 @@ export interface Question {
     OptionB: string;
     OptionC: string;
     OptionD: string;
+    AnswerOptions?: string[]; // Link to AnswerOptions table (for flexible options)
     UserResponses?: string[]; // Link to UserResponses table
   };
 }

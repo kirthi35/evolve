@@ -53,9 +53,9 @@ const AdminContentPage: React.FC = () => {
     return null;
   };
 
-  const handleContentAdded = () => {
-    loadData(); // Refresh the data
-  };
+  // const handleContentAdded = () => {
+  //   loadData(); // Refresh the data
+  // };
 
   if (loading) {
     return (

@@ -101,7 +101,7 @@ const AdminUploadPage = () => {
       // Create content in Airtable
       const contentData = {
         Title: videoTitle,
-        TargetGroup: group === 'groupA' ? 'Group A' : 'Group B',
+        TargetGroup: group === 'groupA' ? 'Group A' as const : 'Group B' as const,
         YouTubeURL: videoLink, // Store the full URL, not just the video ID
         Order: 0 // You might want to implement ordering logic
       };
@@ -111,7 +111,7 @@ const AdminUploadPage = () => {
       // Create questions in Airtable
       const questionPromises = questions
         .filter(q => q.text.trim() !== '') // Only create questions with text
-        .map(async (question, index) => {
+        .map(async (question) => {
           // Map dynamic options to fixed A, B, C, D structure
           const validOptions = question.options.filter(opt => opt.trim() !== '');
           const questionData = {
@@ -126,7 +126,7 @@ const AdminUploadPage = () => {
           return await createQuestion(questionData);
         });
 
-      const createdQuestions = await Promise.all(questionPromises);
+      await Promise.all(questionPromises);
 
       setSubmitStatus('success');
       

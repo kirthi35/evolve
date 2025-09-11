@@ -1,0 +1,107 @@
+Objective:
+Generate a complete, mobile-responsive React web application for a user study. The application will be built using React, TypeScript, and Shadcn UI. The core architecture involves the frontend communicating directly with the Airtable API for all data operations.
+Core Technologies & Setup:
+ * Framework: Initialize a new React project using Vite.
+ * Language: Use TypeScript throughout the project.
+ * Styling: Set up Tailwind CSS and initialize Shadcn UI. Use Shadcn components (Card, Button, Input, Table, etc.) for all UI elements.
+ * State Management: Configure Redux Toolkit (RTK) for global state.
+ * Form Management: Use react-hook-form for all forms (Login/Sign Up, Questionnaires).
+ * Authentication: Integrate Firebase Authentication (v9+ modular SDK) for Google OAuth and Email/Password.
+ * Routing: Use react-router-dom for all navigation.
+ * Environment Variables: Create a .env.local file to store all keys for Firebase and Airtable (VITE_AIRTABLE_API_KEY, VITE_AIRTABLE_BASE_ID, etc.).
+Project Structure
+Create the following directory structure inside src/:
+ * components/ (reusable UI components)
+   * auth/ (authentication related components)
+   * dashboard/ (components for user dashboards)
+   * admin/ (components for the admin panel)
+   * ui/ (Shadcn UI components will be here)
+ * pages/ (top-level route components)
+ * services/ (modules for external API interactions)
+ * store/ (Redux Toolkit setup)
+ * hooks/ (custom hooks)
+ * types/ (TypeScript type definitions)
+ * utils/ (helper functions)
+1. Type Definitions (src/types/airtable.ts)
+Define TypeScript interfaces for all Airtable data models: User, Content, Question, UserResponse, and UserProgress.
+2. Services (src/services/)
+2.1. Firebase Service (firebaseService.ts)
+ * Initialize and export the Firebase app instance.
+ * Export auth instance.
+ * Create and export async functions for:
+   * signInWithGoogle()
+   * signUpWithEmail(email, password)
+   * signInWithEmail(email, password)
+   * signOutUser()
+   * onAuthChange(callback): A listener for authentication state changes.
+2.2. Airtable Service (airtableService.ts)
+ * Use the airtable.js package. Configure it with the API key and Base ID from environment variables.
+ * Create and export async functions to interact with the Airtable API. Ensure all functions handle API responses and errors.
+   * fetchUserByFirebaseUID(uid): Fetches a single user record from the 'Users' table.
+   * createUser(userData): Creates a new record in the 'Users' table. The userData object will include UserID (Firebase uid), Email, AssignedGroup, OnboardingCompleted: true, and IsAdmin: false.
+   * fetchOnboardingQuestions(): Fetches all questions for the initial questionnaire.
+   * fetchContentForGroup(group): Fetches video content from the 'Content' table for a given group ('Group A' or 'Group B'), sorted by the 'Order' field.
+   * fetchQuestionsForVideo(videoId): Fetches linked questions for a specific video.
+   * submitUserResponses(responses): Creates new records in the 'UserResponses' table.
+   * updateUserProgress(progressData): Creates or updates a record in the 'UserProgress' table.
+   * (Admin) fetchAllUsers(): Fetches all records from the 'Users' table for the admin panel.
+3. State Management (src/store/)
+Create a Redux store with a userSlice.
+userSlice.ts
+ * State Shape: { user: { uid: string | null; email: string | null; airtableRecord: User | null; isAdmin: boolean; }, status: 'idle' | 'loading' | 'succeeded' | 'failed', isAuthenticated: boolean }
+ * Reducers/Actions:
+   * setUser(state, action): Sets the Firebase uid and email, and sets isAuthenticated to true.
+   * setAirtableData(state, action): Sets the airtableRecord and isAdmin flag from the fetched Airtable data.
+* clearUser(state): Resets the state to initial values on logout.
+ * Thunks:
+   * checkAuthStatus(): An async thunk that uses the onAuthChange listener from firebaseService. If a user is found, it dispatches setUser, then calls airtableService.fetchUserByFirebaseUID and dispatches setAirtableData.
+
+4. Routing & Page Components (src/App.tsx, src/pages/)
+Implement routing using react-router-dom. Create the following page components in src/pages/:
+ * AuthenticationPage.tsx:
+   * Route: /
+   * UI: Use Shadcn Card, Input, and Button. Implement a state to toggle between "Log In" and "Sign Up" views. Include a "Sign in with Google" button.
+   * Logic: Use react-hook-form. On submit, call the appropriate firebaseService function. On successful login/signup, the checkAuthStatus thunk (triggered from a useEffect in App.tsx) will handle fetching user data and redirecting.
+ * OnboardingPage.tsx:
+   * Route: /onboarding (Protected: only for new users where OnboardingCompleted is false).
+   * UI: Display a welcome message. Fetch and render questions from airtableService.fetchOnboardingQuestions. Use Shadcn RadioGroup for answers.
+   * Logic: On form submission, gather all answers. Randomly assign the user to 'Group A' or 'Group B'. Call airtableService.createUser with all required data. After successful creation, update the Redux store and navigate the user to their assigned dashboard (/dashboard).
+ * DashboardPage.tsx:
+   * Route: /dashboard (Protected: for logged-in users who have completed onboarding).
+   * Logic: This component will be a wrapper. It will check the user.airtableRecord.AssignedGroup from the Redux store.
+     * If 'Group A', render the <GroupADashboard /> component.
+     * If 'Group B', render the <GroupBDashboard /> component.
+ * CompletionPage.tsx:
+   * Route: /complete
+   * UI: A simple page with a "Thank you for participating" message and a logout button.
+ * AdminLayout.tsx & Nested Admin Pages:
+   * Route: /admin (Protected: only for users where isAdmin is true in Redux store).
+   * UI: Render an admin navigation bar (Dashboard, User Management) and an <Outlet /> for nested routes.
+   * AdminDashboardPage.tsx (Route: /admin/dashboard):
+     * UI: Use Shadcn Card to display metrics: Total Users, Group A/B counts.
+     * Logic: Fetch data via airtableService.fetchAllUsers and compute the stats.
+   * AdminUserManagementPage.tsx (Route: /admin/users):
+     * UI: Implement a DataTable using Shadcn's Table component. Include columns for Email, Assigned Group, Progress, etc. Add an Input for searching/filtering by email.
+     * Logic: Fetch all users and display them. Implement client-side search functionality.
+5. Dashboard Components (src/components/dashboard/)
+ * GroupADashboard.tsx:
+   * State: Manage the current video index, watch progress, and questionnaire visibility.
+   * Logic:
+     * Fetch all 'Group A' content using airtableService.fetchContentForGroup('Group A').
+     * Render the current video using the YouTube Iframe Player API. The player must have full controls.
+     * Track video watch progress. When progress hits 90%, enable the "Proceed to Questions" button.
+     * On button click, hide the video player and show the <Questionnaire /> component, passing the video's questions as props.
+     * On questionnaire submission, save the responses via airtableService and advance to the next video. If all videos are done, navigate to /complete.
+   * UI: Display the video title, the player, and a list of upcoming (locked) videos.
+ * GroupBDashboard.tsx:
+   * Logic:
+     * Fetch all 'Group B' content.
+     * Determine which video to show based on the current day (e.g., day 1 = video 1, day 2 = video 2). You may need to store the user's start date or progress in Airtable.
+     * If a video is available for the day, render it using the YouTube Iframe Player API. Configure it to autoplay, with no controls, and be non-replayable.
+     * On video completion (using the onStateChange event from the API), immediately display the two related questions.
+     * On submission, save the responses.
+* If the user has completed the video for the day, show a "Please come back tomorrow" message. If all 7 days are complete, navigate to /complete.
+ * Questionnaire.tsx:
+   * Props: questions: Question[], onSubmit: (answers) => void.
+   * UI: A reusable component that takes an array of questions and renders them with radio button options.
+   * Logic: Uses react-hook-form to manage state and validation. Calls the onSubmit prop with the collected answers

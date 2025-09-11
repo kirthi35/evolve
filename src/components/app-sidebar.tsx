@@ -3,12 +3,7 @@
 import * as React from "react"
 import {
   BookOpen,
-  Bot,
-  Command,
-  Frame,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
   Settings2,
   SquareTerminal,
   Users,
@@ -16,10 +11,17 @@ import {
   Video,
   FileText,
   UserCheck,
+  LayoutDashboard,
+  Library,
+  Upload,
+  LifeBuoy,
+  Send,
 } from "lucide-react"
+import { useLocation } from "react-router-dom"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
+import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "@/components/team-switcher"
 import ThemeSwitcher from "@/components/ThemeSwitcher"
@@ -35,21 +37,76 @@ import { store } from "../store/index"
 
 type RootState = ReturnType<typeof store.getState>
 
-// Study application data
-const data = {
-  teams: [
+// Get navigation data based on context
+const getNavigationData = (location: string, isAdmin: boolean) => {
+  const isAdminRoute = location.startsWith('/admin');
+  
+  const teams = [
     {
       name: "Evolve Study",
       logo: GalleryVerticalEnd,
-      plan: "Research Platform",
+      plan: isAdminRoute ? "Admin Panel" : "Research Platform",
     },
-  ],
-  navMain: [
+  ];
+
+  // For non-admin users, return empty navigation arrays
+  if (!isAdmin) {
+    return {
+      teams,
+      navMain: [],
+      projects: [],
+      navSecondary: []
+    };
+  }
+
+  // Admin-specific navigation
+  const adminNavMain = [
+    {
+      title: "Dashboard",
+      url: "/admin/dashboard",
+      icon: LayoutDashboard,
+      isActive: location === "/admin/dashboard",
+      items: [],
+    },
+    {
+      title: "Content Library",
+      url: "/admin/content",
+      icon: Library,
+      isActive: location.startsWith("/admin/content"),
+      items: [
+        {
+          title: "All Content",
+          url: "/admin/content",
+        },
+        {
+          title: "Add New Content",
+          url: "/admin/content/new",
+        },
+      ],
+    },
+    {
+      title: "User Management",
+      url: "/admin/users",
+      icon: Users,
+      isActive: location.startsWith("/admin/users"),
+      items: [],
+    },
+    {
+      title: "Upload Content",
+      url: "/admin/upload",
+      icon: Upload,
+      isActive: location.startsWith("/admin/upload"),
+      items: [],
+    },
+  ];
+
+  // Regular user navigation
+  const userNavMain = [
     {
       title: "Study Dashboard",
       url: "/dashboard",
       icon: SquareTerminal,
-      isActive: true,
+      isActive: location === "/dashboard",
       items: [
         {
           title: "Group A Videos",
@@ -69,6 +126,7 @@ const data = {
       title: "Content",
       url: "/content",
       icon: Video,
+      isActive: location.startsWith("/content"),
       items: [
         {
           title: "Video Library",
@@ -88,54 +146,64 @@ const data = {
         },
       ],
     },
-    {
+  ];
+
+  // Add admin access to regular users if they're admin
+  if (isAdmin && !isAdminRoute) {
+    userNavMain.push({
       title: "Admin Panel",
-      url: "/admin",
+      url: "/admin/dashboard",
       icon: Settings2,
+      isActive: false,
       items: [
+        {
+          title: "Dashboard",
+          url: "/admin/dashboard",
+        },
         {
           title: "User Management",
           url: "/admin/users",
         },
         {
-          title: "Upload Content",
-          url: "/admin/upload",
-        },
-        {
-          title: "Analytics",
-          url: "/admin/analytics",
-        },
-        {
-          title: "Study Settings",
-          url: "/admin/settings",
+          title: "Content Library",
+          url: "/admin/content",
         },
       ],
-    },
-    {
-      title: "Help & Support",
-      url: "/help",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Getting Started",
-          url: "/help/start",
-        },
-        {
-          title: "FAQ",
-          url: "/help/faq",
-        },
-        {
-          title: "Contact Support",
-          url: "/help/contact",
-        },
-      ],
-    },
-  ],
-  projects: [
+    });
+  }
+
+  // Always show help
+  const helpNav = {
+    title: "Help & Support",
+    url: "/help",
+    icon: BookOpen,
+    isActive: location.startsWith("/help"),
+    items: [
+      {
+        title: "Getting Started",
+        url: "/help/start",
+      },
+      {
+        title: "FAQ",
+        url: "/help/faq",
+      },
+      {
+        title: "Contact Support",
+        url: "/help/contact",
+      },
+    ],
+  };
+
+  const navMain = isAdminRoute ? adminNavMain : userNavMain;
+  if (!isAdminRoute) {
+    navMain.push(helpNav);
+  }
+
+  const projects = isAdminRoute ? [] : [
     {
       name: "User Study A",
       url: "/study/group-a",
-      icon: Users,
+      icon: UserCheck,
     },
     {
       name: "User Study B",
@@ -147,17 +215,43 @@ const data = {
       url: "/research/data",
       icon: FileText,
     },
-  ],
-}
+  ];
+
+  const navSecondary = [
+    {
+      title: "Support",
+      url: "/help",
+      icon: LifeBuoy,
+    },
+    {
+      title: "Feedback",
+      url: "/feedback",
+      icon: Send,
+    },
+  ];
+
+  return { teams, navMain, projects, navSecondary };
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useSelector((state: RootState) => state.user);
+  const location = useLocation();
+  
+  const data = getNavigationData(location.pathname, user.isAdmin);
 
   const navUser = user.airtableRecord ? {
     name: user.airtableRecord.fields.UserID,
     email: user.airtableRecord.fields.Email,
     avatar: "/avatars/participant.jpg",
-  } : null;
+  } : user.email ? {
+    name: user.email.split('@')[0], // Use email username if no airtable record
+    email: user.email,
+    avatar: "/avatars/participant.jpg",
+  } : {
+    name: "Guest User",
+    email: "guest@example.com", 
+    avatar: "/avatars/guest.jpg",
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -165,14 +259,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-        <div className="mt-auto p-2">
-          <ThemeSwitcher />
-        </div>
+        {data.navMain.length > 0 && <NavMain items={data.navMain} />}
+        {data.projects.length > 0 && <NavProjects projects={data.projects} />}
+        {data.navSecondary.length > 0 && <NavSecondary items={data.navSecondary} />}
       </SidebarContent>
       <SidebarFooter>
-        {navUser && <NavUser user={navUser} />}
+        <NavUser user={navUser} isAdmin={user.isAdmin} />
+        <div className="p-2">
+          <ThemeSwitcher />
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

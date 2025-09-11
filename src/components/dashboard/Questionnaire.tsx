@@ -1,6 +1,10 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import type { Question, QuestionnaireFormData, AnswerOption } from '../../types/airtable';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { Label } from '../ui/label';
 
 // Define a new type that combines a question with its answer options
 export interface QuestionWithAnswerOptions extends Question {
@@ -29,56 +33,62 @@ const Questionnaire: React.FC<QuestionnaireProps> = ({
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">
-        Please answer the following questions:
-      </h3>
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg md:text-xl">Please answer the following questions:</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 md:space-y-6">
+          {questions.map((question, index) => (
+            <div key={question.id} className="space-y-3 md:space-y-4 p-4 border border-border rounded-lg bg-card">
+              <h4 className="text-sm md:text-base font-medium leading-tight">
+                {index + 1}. {question.fields.QuestionText}
+              </h4>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        {questions.map((question, index) => (
-          <div key={question.id} className="border-b border-gray-200 pb-6 last:border-b-0">
-            <h4 className="text-base font-medium text-gray-900 mb-4">
-              {index + 1}. {question.fields.QuestionText}
-            </h4>
+              <RadioGroup
+                value={question.id}
+                className="space-y-2 md:space-y-3"
+              >
+                {question.answerOptions.map((option) => (
+                  <div key={option.id} className="flex items-start space-x-3 p-2 rounded hover:bg-accent transition-colors">
+                    <RadioGroupItem
+                      {...register(question.id, {
+                        required: 'Please select an answer'
+                      })}
+                      value={option.fields.OptionText}
+                      id={`${question.id}-${option.id}`}
+                      className="mt-1"
+                    />
+                    <Label
+                      htmlFor={`${question.id}-${option.id}`}
+                      className="text-xs md:text-sm font-normal cursor-pointer flex-1 leading-relaxed"
+                    >
+                      {option.fields.OptionText}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
 
-            <div className="space-y-3">
-              {question.answerOptions.map((option) => (
-                <label
-                  key={option.id}
-                  className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-md"
-                >
-                  <input
-                    {...register(question.id, {
-                      required: 'Please select an answer'
-                    })}
-                    type="radio"
-                    value={option.fields.OptionText}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                  />
-                  <span className="text-gray-700">{option.fields.OptionText}</span>
-                </label>
-              ))}
+              {errors[question.id] && (
+                <p className="text-xs md:text-sm text-destructive">
+                  {errors[question.id]?.message}
+                </p>
+              )}
             </div>
+          ))}
 
-            {errors[question.id] && (
-              <p className="mt-2 text-sm text-red-600">
-                {errors[question.id]?.message}
-              </p>
-            )}
+          <div className="pt-4">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 text-sm md:text-base"
+            >
+              {isLoading ? 'Submitting...' : 'Submit Answers'}
+            </Button>
           </div>
-        ))}
-
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {isLoading ? 'Submitting...' : 'Submit Answers'}
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

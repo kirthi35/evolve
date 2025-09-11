@@ -92,7 +92,7 @@ const AdminUploadModal: React.FC<AdminUploadModalProps> = ({ onContentAdded }) =
       // Create content in Airtable
       const contentData = {
         Title: videoTitle,
-        TargetGroup: group === 'groupA' ? 'Group A' : 'Group B',
+        TargetGroup: group === 'groupA' ? 'Group A' as const : 'Group B' as const,
         YouTubeURL: videoLink,
         Order: 0
       };
@@ -116,7 +116,7 @@ const AdminUploadModal: React.FC<AdminUploadModalProps> = ({ onContentAdded }) =
           return await createQuestion(questionData);
         });
 
-      const createdQuestions = await Promise.all(questionPromises);
+      await Promise.all(questionPromises);
 
       setSubmitStatus('success');
       
