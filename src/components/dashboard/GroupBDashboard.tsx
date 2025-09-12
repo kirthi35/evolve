@@ -277,20 +277,34 @@ const GroupBDashboard: React.FC = () => {
 
   const handleVideoComplete = async () => {
     if (!todaysVideo || !user.airtableRecord) return;
+
+    console.log('GroupB: handleVideoComplete triggered for video:', todaysVideo.fields.Title, `(ID: ${todaysVideo.id})`);
+
     setIsSubmitting(true);
     
     // Destroy the player first
     destroyPlayer();
     
     try {
+      // Mark video as completed
       await upsertUserProgress({
         userRecordId: user.airtableRecord.id,
         videoRecordId: todaysVideo.id,
         WatchPercentage: 100,
         Status: 'Completed',
       });
+
+      // Refresh user progress to reflect the completion
+      const updatedProgress = await fetchUserProgress(user.airtableRecord.id);
+      setUserProgress(updatedProgress);
+
+      // Now, check for questions
+      console.log('GroupB: Fetching questions for video ID:', todaysVideo.id);
       const fetchedQuestions = await fetchQuestionsForVideo(todaysVideo.id);
+      console.log('GroupB: Fetched questions response:', fetchedQuestions);
+
       if (fetchedQuestions.length > 0) {
+        console.log(`GroupB: Found ${fetchedQuestions.length} questions. Preparing questionnaire.`);
         const optionIds = fetchedQuestions.flatMap(q => q.fields.AnswerOptions || []);
         const options = await fetchAnswerOptions(optionIds);
         const questionsWithOptions = fetchedQuestions.map(q => ({
@@ -300,7 +314,9 @@ const GroupBDashboard: React.FC = () => {
         setQuestions(questionsWithOptions);
         setShowQuestionnaire(true);
       } else {
-        navigate(0);
+        console.log('GroupB: No questions found for this video. The completion view will be shown on re-render.');
+        // No action needed here. The component will re-render due to setUserProgress
+        // and since isTodaysVideoCompleted will be true, it will show the completion message.
       }
     } catch (error) {
       console.error('Error handling video completion:', error);
