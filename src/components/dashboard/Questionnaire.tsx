@@ -37,15 +37,17 @@ const Questionnaire: React.FC<QuestionnaireProps> = ({
 	};
 
 	const answerOptions = useMemo(() => {
-		const answers = questions.map((question) => [
-			question.fields.OptionA,
-			question.fields.OptionB,
-			question.fields.OptionC,
-			question.fields.OptionD,
-		]);
-
-		return answers[0];
+		return questions.map((question) =>
+			[
+				question.fields.OptionA,
+				question.fields.OptionB,
+				question.fields.OptionC,
+				question.fields.OptionD,
+			].filter(Boolean),
+		); // Filter out any null/undefined options
 	}, [questions]);
+
+	console.log("answerOptions", questions, answerOptions);
 
 	return (
 		<Card>
@@ -78,7 +80,7 @@ const Questionnaire: React.FC<QuestionnaireProps> = ({
 										onValueChange={field.onChange}
 										className="space-y-2 md:space-y-3"
 									>
-										{answerOptions.map((option) => (
+										{answerOptions[index]?.map((option) => (
 											<div
 												key={option}
 												className="flex items-start space-x-3 p-2 rounded hover:bg-accent transition-colors"

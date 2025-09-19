@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, {
+	useState,
+	useEffect,
+	useRef,
+	useMemo,
+	useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../hooks/redux";
 import {
@@ -36,6 +42,66 @@ declare global {
 	}
 }
 
+const getDaysSince = (dateString?: string): number => {
+	if (!dateString) return 0;
+	const givenDate = new Date(dateString);
+	const today = new Date();
+	givenDate.setHours(0, 0, 0, 0);
+	today.setHours(0, 0, 0, 0);
+	const diffTime = today.getTime() - givenDate.getTime();
+	return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// Function to check if user has completed all Group B content
+const isGroupBCompleted = async (
+	userRecordId: string,
+	content: ContentItem[],
+): Promise<boolean> => {
+	if (!userRecordId || content.length === 0) return false;
+
+	try {
+		// Get all user progress and responses
+		const [userProgress, userResponses] = await Promise.all([
+			fetchUserProgress(userRecordId),
+			fetchUserResponses(userRecordId),
+		]);
+
+		console.log({ userProgress, userResponses });
+
+		// Check if all videos are completed
+		const completedVideos = content.filter((video) => {
+			const videoProgress = userProgress.find(
+				(p) => p.fields.Video?.[0] === video.id,
+			);
+			return (
+				videoProgress?.fields.Status === "Completed" ||
+				(videoProgress?.fields.WatchPercentage ?? 0) >= 90
+			);
+		});
+
+		// Check if all questions are answered for completed videos
+		const allQuestionsAnswered = await Promise.all(
+			completedVideos.map(async (video) => {
+				const questions = await fetchQuestionsForVideo(video.fields.VideoID);
+				const answeredQuestions = questions.filter((question) =>
+					userResponses.some(
+						(response) => response.fields.Question?.[0] === question.id,
+					),
+				);
+				return answeredQuestions.length === questions.length;
+			}),
+		);
+
+		return (
+			completedVideos.length === content.length &&
+			allQuestionsAnswered.every(Boolean)
+		);
+	} catch (error) {
+		console.error("Error checking Group B completion:", error);
+		return false;
+	}
+};
+
 const GroupBDashboard: React.FC = () => {
 	const [content, setContent] = useState<ContentItem[]>([]);
 	const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
@@ -51,6 +117,7 @@ const GroupBDashboard: React.FC = () => {
 	const [isYtApiReady, setIsYtApiReady] = useState(
 		() => typeof window !== "undefined" && !!window.YT,
 	);
+	const [isTodaysVideoCompleted, setIsTodaysVideoCompleted] = useState(false);
 	const playerRef = useRef<HTMLDivElement>(null);
 
 	// Callback ref to ensure we know when the element is available
@@ -64,7 +131,7 @@ const GroupBDashboard: React.FC = () => {
 	const { user } = useAppSelector((state) => state.user);
 
 	// Function to extract YouTube video ID from various URL formats
-	const extractYouTubeVideoId = (url: string): string => {
+	const extractYouTubeVideoId = useCallback((url: string): string => {
 		try {
 			const urlObj = new URL(url);
 
@@ -98,59 +165,7 @@ const GroupBDashboard: React.FC = () => {
 			console.error("Error extracting YouTube video ID:", error);
 			return "";
 		}
-	};
-
-	const getDaysSince = (dateString?: string): number => {
-		if (!dateString) return 0;
-		const givenDate = new Date(dateString);
-		const today = new Date();
-		givenDate.setHours(0, 0, 0, 0);
-		today.setHours(0, 0, 0, 0);
-		const diffTime = today.getTime() - givenDate.getTime();
-		return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-	};
-
-	// Algorithm to find next unseen video/unanswered question
-	const getNextVideo = useMemo(() => {
-		if (!content.length || !user.airtableRecord) return null;
-
-		// Sort content by Order column
-		const sortedContent = [...content].sort(
-			(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
-		);
-
-		// Get completed video IDs (100% watch percentage)
-		const completedVideoIds = userProgress
-			.filter((p) => p.fields.WatchPercentage === 100)
-			.map((p) => p.fields.Video?.[0])
-			.filter(Boolean);
-
-		console.log("GroupB: Completed video IDs:", userProgress);
-
-		// Note: answeredQuestionIds will be used when checking for unanswered questions
-
-		// Find next video that either:
-		// 1. Hasn't been completed (not in completedVideoIds), OR
-		// 2. Has questions that haven't been answered
-		for (const video of sortedContent) {
-			const isVideoCompleted = completedVideoIds.includes(video.id);
-
-			if (!isVideoCompleted) {
-				console.log("GroupB: Found incomplete video:", video.fields.Title);
-				return video;
-			}
-
-			// For completed videos, check if all questions are answered
-			// This will be handled when questions are loaded for this video
-			console.log(
-				"GroupB: Video completed, will check questions when loaded:",
-				video.fields.Title,
-			);
-		}
-
-		// If all videos are completed, return the last one to check for unanswered questions
-		return sortedContent[sortedContent.length - 1] || null;
-	}, [content, userProgress, userResponses, user.airtableRecord]);
+	}, []);
 
 	const journeyDay = useMemo(() => {
 		const day = getDaysSince(user.airtableRecord?.createdTime) + 1;
@@ -163,19 +178,85 @@ const GroupBDashboard: React.FC = () => {
 		return day;
 	}, [user.airtableRecord]);
 
-	const todaysVideo = getNextVideo;
-	const isTodaysVideoCompleted = useMemo(() => {
-		if (!todaysVideo) return false;
-		return userProgress.some(
-			(p) =>
-				p.fields.Video?.[0] === todaysVideo.id &&
-				p.fields.Status === "Completed",
+	// Algorithm to find today's video based on journey day
+	const getNextVideo = useMemo(() => {
+		if (!content.length || !user.airtableRecord) return null;
+
+		// Sort content by Order column (each order represents a day)
+		const sortedContent = [...content].sort(
+			(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
 		);
-	}, [userProgress, todaysVideo]);
-	const totalDays = useMemo(
-		() => Math.max(...content.map((c) => c.fields.Order || 0), 7),
-		[content],
-	);
+
+		// Get today's video based on journey day
+		const todaysVideo = sortedContent.find(
+			(video) => (video.fields.Order || 0) === journeyDay,
+		);
+
+		if (!todaysVideo) {
+			console.log("GroupB: No video found for journey day:", journeyDay);
+			return null;
+		}
+
+		console.log(
+			"GroupB: Today's video:",
+			todaysVideo.fields.Title,
+			"for day:",
+			journeyDay,
+		);
+		return todaysVideo;
+	}, [content, journeyDay, user.airtableRecord]);
+
+	// Check if user has completed all previous days to access current day
+	const canAccessCurrentDay = useMemo(() => {
+		if (!userProgress.length || journeyDay === 1) return true; // First day is always accessible
+
+		// Check if all previous days are completed
+		const previousDays = content.filter(
+			(video) => (video.fields.Order || 0) < journeyDay,
+		);
+
+		// If there are no previous days, allow access
+		if (previousDays.length === 0) return true;
+
+		// Check if all previous days are completed
+		const allPreviousDaysCompleted = previousDays.every((video) => {
+			const videoProgress = userProgress.find(
+				(p) =>
+					p.fields.Video?.[0] === video.id &&
+					(p.fields.WatchPercentage === 100 || p.fields.Status === "Completed"),
+			);
+			console.log(
+				`GroupB: Previous day ${video.fields.Order} (${video.fields.Title}) completed:`,
+				!!videoProgress,
+			);
+			return !!videoProgress;
+		});
+
+		console.log(
+			"GroupB: Can access current day:",
+			allPreviousDaysCompleted,
+			"Previous days:",
+			previousDays.length,
+		);
+		return allPreviousDaysCompleted;
+	}, [userProgress, journeyDay, content]);
+
+	const todaysVideo = getNextVideo;
+	const totalDays = useMemo(() => {
+		if (content.length === 0) return 7; // Default fallback
+		return Math.max(...content.map((c) => c.fields.Order || 0));
+	}, [content]);
+
+	// Debug logging
+	console.log("GroupB: Current state:", {
+		journeyDay,
+		todaysVideo: todaysVideo?.fields.Title,
+		canAccessCurrentDay,
+		isTodaysVideoCompleted,
+		showQuestionnaire,
+		userProgressCount: userProgress.length,
+		userResponsesCount: userResponses.length,
+	});
 	const isFirstTime = useMemo(() => {
 		return userProgress.length === 0; // No progress records means first time
 	}, [userProgress]);
@@ -198,13 +279,25 @@ const GroupBDashboard: React.FC = () => {
 				console.log("GroupB: Raw content loaded:", groupBContent);
 				console.log("GroupB: User progress loaded:", progressRecords);
 				console.log("GroupB: User responses loaded:", userResponseRecords);
-				setContent(
-					groupBContent.sort(
-						(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
-					),
+
+				const sortedContent = groupBContent.sort(
+					(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
 				);
+				setContent(sortedContent);
 				setUserProgress(progressRecords);
 				setUserResponses(userResponseRecords);
+
+				// Check if all Group B content is completed
+				if (sortedContent.length > 0) {
+					const completed = await isGroupBCompleted(
+						user.airtableRecord.fields.UserID,
+						sortedContent,
+					);
+					if (completed) {
+						navigate("/complete");
+						return;
+					}
+				}
 			} catch (error) {
 				console.error("Error loading Group B data:", error);
 			} finally {
@@ -214,7 +307,121 @@ const GroupBDashboard: React.FC = () => {
 		if (user.airtableRecord?.fields.UserID) {
 			loadData();
 		}
-	}, [user.airtableRecord]);
+	}, [user.airtableRecord, navigate]);
+
+	// Check if today's video is completed OR if all videos up to today are completed
+	useEffect(() => {
+		const checkCompletionStatus = async () => {
+			if (!user.airtableRecord || content.length === 0) {
+				setIsTodaysVideoCompleted(false);
+				return;
+			}
+
+			try {
+				// First, check if today's video exists and is completed
+				const todaysVideo = content.find(
+					(video) => (video.fields.Order || 0) === journeyDay,
+				);
+
+				if (todaysVideo) {
+					// Check if today's video is completed
+					const videoProgress = userProgress.find(
+						(p) =>
+							p.fields.Video?.[0] === todaysVideo.id &&
+							(p.fields.WatchPercentage === 100 ||
+								p.fields.Status === "Completed"),
+					);
+
+					if (videoProgress) {
+						// Check if all questions for today's video are answered
+						const questions = await fetchQuestionsForVideo(
+							todaysVideo.fields.VideoID,
+						);
+
+						if (questions.length === 0) {
+							console.log("GroupB: Today's video has no questions, completed");
+							setIsTodaysVideoCompleted(true);
+							return;
+						}
+
+						const answeredQuestionIds = userResponses
+							.map((r) => r.fields.Question?.[0])
+							.filter(Boolean);
+
+						const allQuestionsAnswered = questions.every((q) =>
+							answeredQuestionIds.includes(q.id),
+						);
+
+						console.log(
+							"GroupB: Today's video questions answered:",
+							allQuestionsAnswered,
+						);
+						console.log(
+							"GroupB: Questions for today's video:",
+							questions.map((q) => q.id),
+						);
+						console.log("GroupB: Answered question IDs:", answeredQuestionIds);
+						setIsTodaysVideoCompleted(allQuestionsAnswered);
+						return;
+					}
+				}
+
+				// If today's video doesn't exist or isn't completed, check if all previous days are completed
+				// This handles the case where user has completed all available content
+				const videosUpToToday = content.filter(
+					(video) => (video.fields.Order || 0) <= journeyDay,
+				);
+
+				console.log(
+					"GroupB: No video for today, checking if all videos up to day are completed:",
+					journeyDay,
+				);
+
+				const allVideosCompleted = await Promise.all(
+					videosUpToToday.map(async (video) => {
+						const videoProgress = userProgress.find(
+							(p) =>
+								p.fields.Video?.[0] === video.id &&
+								(p.fields.WatchPercentage === 100 ||
+									p.fields.Status === "Completed"),
+						);
+
+						if (!videoProgress) {
+							console.log(`GroupB: Video ${video.fields.Title} not completed`);
+							return false;
+						}
+
+						const questions = await fetchQuestionsForVideo(
+							video.fields.VideoID,
+						);
+
+						if (questions.length === 0) {
+							return true;
+						}
+
+						const answeredQuestionIds = userResponses
+							.map((r) => r.fields.Question?.[0])
+							.filter(Boolean);
+
+						const allQuestionsAnswered = questions.every((q) =>
+							answeredQuestionIds.includes(q.id),
+						);
+
+						return allQuestionsAnswered;
+					}),
+				);
+
+				const isCompleted = allVideosCompleted.every(Boolean);
+				console.log("GroupB: All videos up to today completed:", isCompleted);
+				setIsTodaysVideoCompleted(isCompleted);
+			} catch (error) {
+				console.error("Error checking completion status:", error);
+				setIsTodaysVideoCompleted(false);
+			}
+		};
+
+		checkCompletionStatus();
+	}, [journeyDay, userProgress, userResponses, user.airtableRecord, content]);
 
 	useEffect(() => {
 		console.log(
@@ -240,26 +447,108 @@ const GroupBDashboard: React.FC = () => {
 
 		// Cleanup function to destroy player when component unmounts
 		return () => {
-			if (player && player.destroy) {
+			if (player?.destroy) {
 				console.log("GroupB: Destroying player on cleanup");
 				player.destroy();
 			}
 		};
 	}, [player, isYtApiReady]);
 
-	// Effect to create the player when conditions are right
-	useEffect(() => {
-		if (isVideoLoading && isYtApiReady && !player && playerRef.current) {
-			console.log("GroupB: Conditions met, creating player via useEffect.");
-			createPlayer();
+	const destroyPlayer = useCallback(() => {
+		if (player?.destroy) {
+			player.destroy();
+			setPlayer(null);
+			setVideoStarted(false);
 		}
-	}, [isVideoLoading, isYtApiReady, player]);
+	}, [player]);
 
-	const createPlayer = () => {
+	const handleVideoComplete = useCallback(async () => {
+		if (!todaysVideo || !user.airtableRecord) return;
+
+		console.log(
+			"GroupB: handleVideoComplete triggered for video:",
+			todaysVideo.fields.Title,
+			`(ID: ${todaysVideo.id})`,
+		);
+
+		setIsSubmitting(true);
+
+		// Destroy the player first
+		destroyPlayer();
+
+		try {
+			// Mark video as completed
+			await upsertUserProgress({
+				userRecordId: user.airtableRecord.id,
+				videoRecordId: todaysVideo.id,
+				WatchPercentage: 100,
+				Status: "Completed",
+			});
+
+			// Refresh user progress to reflect the completion
+			const updatedProgress = await fetchUserProgress(
+				user.airtableRecord.fields.UserID,
+			);
+			setUserProgress(updatedProgress);
+
+			// Now, check for questions
+			console.log(
+				"GroupB: Fetching questions for video ID:",
+				todaysVideo.fields.VideoID,
+			);
+			const fetchedQuestions = await fetchQuestionsForVideo(
+				todaysVideo.fields.VideoID,
+			);
+			console.log("GroupB: Fetched questions response:", fetchedQuestions);
+
+			if (fetchedQuestions.length > 0) {
+				// Check which questions are already answered
+				const answeredQuestionIds = userResponses
+					.map((r) => r.fields.Question?.[0])
+					.filter(Boolean);
+
+				const unansweredQuestions = fetchedQuestions.filter(
+					(q) => !answeredQuestionIds.includes(q.id),
+				);
+
+				if (unansweredQuestions.length > 0) {
+					console.log(
+						`GroupB: Found ${unansweredQuestions.length} unanswered questions. Preparing questionnaire.`,
+					);
+					const optionIds = unansweredQuestions.flatMap(
+						(q) => q.fields.AnswerOptions || [],
+					);
+					const options = await fetchAnswerOptions(optionIds);
+					const questionsWithOptions = unansweredQuestions.map((q) => ({
+						...q,
+						answerOptions: options.filter((opt) =>
+							q.fields.AnswerOptions?.includes(opt.id),
+						),
+					}));
+					setQuestions(questionsWithOptions);
+					setShowQuestionnaire(true);
+				} else {
+					console.log(
+						"GroupB: All questions for this video have been answered. The completion view will be shown on re-render.",
+					);
+				}
+			} else {
+				console.log(
+					"GroupB: No questions found for this video. The completion view will be shown on re-render.",
+				);
+			}
+		} catch (error) {
+			console.error("Error handling video completion:", error);
+		} finally {
+			setIsSubmitting(false);
+		}
+	}, [todaysVideo, user.airtableRecord, userResponses, destroyPlayer]);
+
+	const createPlayer = useCallback(() => {
 		console.log("GroupB: createPlayer called", {
 			todaysVideo: !!todaysVideo,
 			windowYT: !!window.YT,
-			YTPlayer: !!(window.YT && window.YT.Player),
+			YTPlayer: !!window.YT?.Player,
 			playerRefCurrent: !!playerRef.current,
 		});
 
@@ -338,15 +627,15 @@ const GroupBDashboard: React.FC = () => {
 			console.error("GroupB: Error creating YouTube player:", error);
 			setIsVideoLoading(false);
 		}
-	};
+	}, [todaysVideo, extractYouTubeVideoId, handleVideoComplete]);
 
-	const destroyPlayer = () => {
-		if (player && player.destroy) {
-			player.destroy();
-			setPlayer(null);
-			setVideoStarted(false);
+	// Effect to create the player when conditions are right
+	useEffect(() => {
+		if (isVideoLoading && isYtApiReady && !player && playerRef.current) {
+			console.log("GroupB: Conditions met, creating player via useEffect.");
+			createPlayer();
 		}
-	};
+	}, [isVideoLoading, isYtApiReady, player, createPlayer]);
 
 	const handlePlayVideo = () => {
 		setShowWarningDialog(true);
@@ -364,89 +653,12 @@ const GroupBDashboard: React.FC = () => {
 		setShowWarningDialog(false);
 	};
 
-	const handleVideoComplete = async () => {
-		if (!todaysVideo || !user.airtableRecord) return;
-
-		console.log(
-			"GroupB: handleVideoComplete triggered for video:",
-			todaysVideo.fields.Title,
-			`(ID: ${todaysVideo.id})`,
-		);
-
-		setIsSubmitting(true);
-
-		// Destroy the player first
-		destroyPlayer();
-
-		try {
-			// Mark video as completed
-			await upsertUserProgress({
-				userRecordId: user.airtableRecord.fields.UserID,
-				videoRecordId: todaysVideo.id,
-				WatchPercentage: 100,
-				Status: "Completed",
-			});
-
-			// Refresh user progress to reflect the completion
-			const updatedProgress = await fetchUserProgress(
-				user.airtableRecord.fields.UserID,
-			);
-			setUserProgress(updatedProgress);
-
-			// Now, check for questions
-			console.log("GroupB: Fetching questions for video ID:", todaysVideo.id);
-			const fetchedQuestions = await fetchQuestionsForVideo(todaysVideo.id);
-			console.log("GroupB: Fetched questions response:", fetchedQuestions);
-
-			if (fetchedQuestions.length > 0) {
-				// Check which questions are already answered
-				const answeredQuestionIds = userResponses
-					.map((r) => r.fields.Question?.[0])
-					.filter(Boolean);
-
-				const unansweredQuestions = fetchedQuestions.filter(
-					(q) => !answeredQuestionIds.includes(q.id),
-				);
-
-				if (unansweredQuestions.length > 0) {
-					console.log(
-						`GroupB: Found ${unansweredQuestions.length} unanswered questions. Preparing questionnaire.`,
-					);
-					const optionIds = unansweredQuestions.flatMap(
-						(q) => q.fields.AnswerOptions || [],
-					);
-					const options = await fetchAnswerOptions(optionIds);
-					const questionsWithOptions = unansweredQuestions.map((q) => ({
-						...q,
-						answerOptions: options.filter((opt) =>
-							q.fields.AnswerOptions?.includes(opt.id),
-						),
-					}));
-					setQuestions(questionsWithOptions);
-					setShowQuestionnaire(true);
-				} else {
-					console.log(
-						"GroupB: All questions for this video have been answered. The completion view will be shown on re-render.",
-					);
-				}
-			} else {
-				console.log(
-					"GroupB: No questions found for this video. The completion view will be shown on re-render.",
-				);
-			}
-		} catch (error) {
-			console.error("Error handling video completion:", error);
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
 	const handleQuestionnaireSubmit = async (answers: QuestionnaireFormData) => {
 		if (!user.airtableRecord) return;
 		setIsSubmitting(true);
 		try {
 			const responses = Object.entries(answers).map(([questionId, answer]) => ({
-				User: [user.airtableRecord!.fields.UserID],
+				User: [user.airtableRecord?.id || ""],
 				Question: [questionId],
 				SelectedAnswer: answer,
 			}));
@@ -460,8 +672,15 @@ const GroupBDashboard: React.FC = () => {
 
 			setShowQuestionnaire(false);
 
-			// Check if there are more videos or questions to complete
-			// The component will re-render and show the next video/question
+			// Check if all Group B content is now completed
+			const completed = await isGroupBCompleted(
+				user.airtableRecord.fields.UserID,
+				content,
+			);
+
+			if (completed) {
+				navigate("/complete");
+			}
 		} catch (error) {
 			console.error("Error submitting questionnaire:", error);
 		} finally {
@@ -479,19 +698,13 @@ const GroupBDashboard: React.FC = () => {
 		);
 	}
 
-	if (journeyDay > totalDays) {
-		return (
-			<div className="text-center p-10">
-				<h2 className="text-2xl font-bold">Study Complete!</h2>
-				<p>You have completed all days of the study.</p>
-				<Button onClick={() => navigate("/complete")} className="mt-4">
-					View Completion Page
-				</Button>
-			</div>
-		);
-	}
-
+	// Show completion message if all videos up to current day are completed
 	if (isTodaysVideoCompleted && !showQuestionnaire) {
+		const nextDay = journeyDay + 1;
+		const hasNextDay = content.some(
+			(video) => (video.fields.Order || 0) === nextDay,
+		);
+
 		return (
 			<div className="text-center p-10">
 				<div className="max-w-md mx-auto space-y-4">
@@ -511,10 +724,43 @@ const GroupBDashboard: React.FC = () => {
 							/>
 						</svg>
 					</div>
-					<h2 className="text-2xl font-bold">Thank You!</h2>
+					<h2 className="text-2xl font-bold">Day {journeyDay} Complete!</h2>
 					<p className="text-muted-foreground">
-						You have completed Day {journeyDay}. Please come back tomorrow for
-						your next video.
+						{hasNextDay
+							? `You have completed all videos up to Day ${journeyDay}. Please come back tomorrow for Day ${nextDay}.`
+							: "Congratulations! You have completed all available content. Thank you for participating in the study."}
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	// Show access denied message if user hasn't completed previous days
+	if (!canAccessCurrentDay && !showQuestionnaire) {
+		return (
+			<div className="text-center p-10">
+				<div className="max-w-md mx-auto space-y-4">
+					<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-amber-100">
+						<svg
+							className="h-8 w-8 text-amber-600"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+							/>
+						</svg>
+					</div>
+					<h2 className="text-2xl font-bold">Complete Previous Days First</h2>
+					<p className="text-muted-foreground">
+						You need to complete all previous days before accessing Day{" "}
+						{journeyDay}. Please complete the videos and questions for the
+						previous days first.
 					</p>
 				</div>
 			</div>
@@ -531,7 +777,7 @@ const GroupBDashboard: React.FC = () => {
 				{isFirstTime && (
 					<div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
 						<h3 className="font-semibold text-blue-900">
-							Welcome to your study journey!
+							Welcome to Day {journeyDay} of your study journey!
 						</h3>
 						<p className="text-blue-800 text-sm mt-1">
 							You'll watch one video per day and answer questions. Each session
@@ -595,7 +841,7 @@ const GroupBDashboard: React.FC = () => {
 						<div className="mt-4 space-y-2">
 							<p className="text-center text-muted-foreground">
 								{!videoStarted
-									? "Click play to start today's video. Remember, it can only be watched once!"
+									? `Click play to start Day ${journeyDay} video. Remember, it can only be watched once!`
 									: "Video is playing. Please watch until the end to proceed to questions."}
 							</p>
 							{!videoStarted && (
@@ -608,7 +854,9 @@ const GroupBDashboard: React.FC = () => {
 					</div>
 				) : (
 					<div className="text-center p-10">
-						<h2 className="text-2xl font-bold">No video for today.</h2>
+						<h2 className="text-2xl font-bold">
+							No video for Day {journeyDay}.
+						</h2>
 						<p>Please check back later or contact support.</p>
 					</div>
 				)

@@ -356,6 +356,23 @@ export const fetchUserProgress = async (
 	}
 };
 
+// User response by video id
+export const fetchUserProgressByVideoId = async (
+	videoId: string,
+): Promise<UserProgress[]> => {
+	try {
+		const records = await base("UserProgress")
+			.select({
+				filterByFormula: `FIND("${videoId}", ARRAYJOIN({Video})) > 0`,
+			})
+			.all();
+		return handleAirtableResponse<UserProgress>(records);
+	} catch (error) {
+		console.error("Error fetching user progress by video id:", error);
+		throw error;
+	}
+};
+
 export const submitUserResponses = async (
 	responses: Array<{
 		User: string[];
