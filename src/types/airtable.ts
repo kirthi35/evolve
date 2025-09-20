@@ -77,6 +77,19 @@ export interface UserProgress {
 	};
 }
 
+export interface UserDayProgress {
+	id: string;
+	createdTime?: string;
+	fields: {
+		Id?: number; // Autonumber
+		User: string[]; // Link to Users table
+		Day: number;
+		IsVideoCompleted: boolean;
+		IsQuestionnaireCompleted: boolean;
+		CreatedAt?: string;
+	};
+}
+
 // Form data interfaces
 export interface OnboardingFormData {
 	// Demographics

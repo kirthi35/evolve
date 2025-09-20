@@ -1,15 +1,17 @@
 # Airtable Schema Documentation
 
 ## Overview
+
 This document describes the Airtable schema for the Evolve Clinical Study Platform.
 
 ## Tables
 
-
 ### Users
+
 **Description:** User management and authentication data
 
 **Fields:**
+
 - `UserID` (singleLineText): No description
 - `Email` (email): No description
 - `AssignedGroup` (singleSelect): No description
@@ -18,42 +20,46 @@ This document describes the Airtable schema for the Evolve Clinical Study Platfo
 - `CreatedAt` (dateTime): No description
 - `OnboardingData` (longText): No description
 
-
 ### Content
+
 **Description:** Educational content and videos for study groups
 
 **Fields:**
+
 - `Title` (singleLineText): No description
 - `YouTubeVideoID` (singleLineText): No description
 - `Group` (singleSelect): No description
 - `Order` (number): No description
 
-
 ### Questions
+
 **Description:** Assessment questions for content evaluation
 
 **Fields:**
+
 - `QuestionText` (longText): No description
 - `Options` (longText): No description
 - `Type` (singleSelect): No description
 - `OnboardingQuestion` (checkbox): No description
 
-
 ### UserResponses
+
 **Description:** User responses to assessment questions
 
 **Fields:**
+
 - `UserID` (singleLineText): No description
 - `QuestionID` (singleLineText): No description
 - `Answer` (longText): No description
 - `VideoID` (singleLineText): No description
 - `SubmittedAt` (dateTime): No description
 
-
 ### UserProgress
+
 **Description:** User progress tracking through study content
 
 **Fields:**
+
 - `UserID` (singleLineText): No description
 - `VideoID` (singleLineText): No description
 - `WatchProgress` (number): No description
@@ -61,15 +67,15 @@ This document describes the Airtable schema for the Evolve Clinical Study Platfo
 - `CompletedAt` (dateTime): No description
 - `DayNumber` (number): No description
 
-
 ### AnswerOptions
+
 **Description:** Answer options for multiple choice questions
 
 **Fields:**
+
 - `OptionText` (singleLineText): No description
 - `IsCorrect` (checkbox): No description
 - `QuestionID` (singleLineText): No description
-
 
 ## Field Types
 
@@ -81,14 +87,29 @@ This document describes the Airtable schema for the Evolve Clinical Study Platfo
 - **dateTime**: Date and time fields
 - **singleSelect**: Dropdown selection fields
 
+### UserDayProgress
+
+**Description:** Track User Day Progress
+
+**Fields:**
+
+- `Id` (Number): No description
+- `User` (Link to Users): No description
+- `Day` (Number): No description
+- `IsVideoCompleted` (Boolean): No description
+- `IsQuestionnaireCompleted` (Boolean): No description
+- `CreatedAt` (DateTime): No description
+
 ## Usage
 
 1. **Run the schema updater:**
+
    ```bash
    npm run update-airtable
    ```
 
 2. **Set environment variables (optional):**
+
    ```bash
    export AIRTABLE_API_KEY="your_api_key"
    export AIRTABLE_BASE_ID="your_base_id"

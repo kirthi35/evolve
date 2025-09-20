@@ -5,6 +5,7 @@ import type {
 	Question,
 	AnswerOption,
 	UserProgress,
+	UserDayProgress,
 	CreateRecordResponse,
 } from "../types/airtable";
 
@@ -149,6 +150,7 @@ export const fetchContent = async (): Promise<ContentItem[]> => {
 			id: record.id,
 			createdTime: (record as any).createdTime || new Date().toISOString(),
 			fields: {
+				VideoID: record.get("VideoID") as string,
 				Title: record.get("Title") as string,
 				TargetGroup: record.get("TargetGroup") as "Group A" | "Group B",
 				YouTubeURL: record.get("YouTubeURL") as string,
@@ -320,14 +322,31 @@ export const fetchQuestionsForVideo = async (
 	}
 };
 
+export const fetchQuestionsForIds = async (
+	questionIds: string[],
+): Promise<Question[]> => {
+	try {
+		const records = await base("Questions")
+			.select({
+				filterByFormula: `OR(${questionIds.map((id) => `RECORD_ID() = '${id}'`).join(",")})`,
+				sort: [{ field: "QuestionID", direction: "asc" }],
+			})
+			.all();
+
+		return handleAirtableResponse<Question>(records);
+	} catch (error) {
+		console.error("Error fetching questions for ids:", error);
+		throw error;
+	}
+};
+
 export const fetchAnswerOptions = async (
 	optionIds: string[],
 ): Promise<AnswerOption[]> => {
 	if (!optionIds || optionIds.length === 0) {
 		return [];
 	}
-	const filterByFormula =
-		"OR(" + optionIds.map((id) => `RECORD_ID() = '${id}'`).join(",") + ")";
+	const filterByFormula = `OR(${optionIds.map((id) => `RECORD_ID() = '${id}'`).join(",")})`;
 	try {
 		const records = await base("AnswerOptions")
 			.select({ filterByFormula })
@@ -471,6 +490,106 @@ export const upsertUserProgress = async (progressData: {
 	} catch (error) {
 		console.error("Error upserting user progress:", error);
 		console.error("Progress data that failed:", progressData);
+		throw error;
+	}
+};
+
+// UserDayProgress operations
+export const fetchUserDayProgress = async (
+	userRecordId: string,
+): Promise<UserDayProgress[]> => {
+	try {
+		const records = await base("UserDayProgress")
+			.select({
+				filterByFormula: `FIND("${userRecordId}", ARRAYJOIN({User})) > 0`,
+				sort: [{ field: "Day", direction: "asc" }],
+			})
+			.all();
+		return handleAirtableResponse<UserDayProgress>(records);
+	} catch (error) {
+		console.error("Error fetching user day progress:", error);
+		throw error;
+	}
+};
+
+// Cache to prevent duplicate calls
+const upsertCache = new Map<string, Promise<CreateRecordResponse>>();
+
+export const upsertUserDayProgress = async (progressData: {
+	userRecordId: string;
+	day: number;
+	isVideoCompleted: boolean;
+	isQuestionnaireCompleted: boolean;
+}): Promise<CreateRecordResponse> => {
+	try {
+		// Create cache key to prevent duplicate calls
+		const cacheKey = `${progressData.userRecordId}-${progressData.day}-${progressData.isVideoCompleted}-${progressData.isQuestionnaireCompleted}`;
+
+		// If already processing this exact update, return the existing promise
+		if (upsertCache.has(cacheKey)) {
+			console.log("Duplicate upsert call detected, returning cached promise");
+			return upsertCache.get(cacheKey)!;
+		}
+
+		console.log("Upserting user day progress:", progressData);
+
+		// Create the promise and cache it
+		const upsertPromise = (async () => {
+			// Check for existing record first
+			const filterFormula = `AND(FIND('${progressData.userRecordId}', ARRAYJOIN({User})), {Day} = ${progressData.day})`;
+			const existingRecords = await base("UserDayProgress")
+				.select({
+					filterByFormula: filterFormula,
+					maxRecords: 1,
+				})
+				.firstPage();
+
+			if (existingRecords.length > 0) {
+				// Update existing record
+				console.log(
+					"Updating existing day progress record:",
+					existingRecords[0].id,
+				);
+				const record = await base("UserDayProgress").update(
+					existingRecords[0].id,
+					{
+						IsVideoCompleted: progressData.isVideoCompleted,
+						IsQuestionnaireCompleted: progressData.isQuestionnaireCompleted,
+					},
+				);
+				return {
+					id: record.id,
+					fields: record.fields,
+					createdTime: (record as any).createdTime,
+				};
+			} else {
+				// Create new record
+				console.log("Creating new day progress record");
+				const record = await base("UserDayProgress").create({
+					User: [progressData.userRecordId],
+					Day: progressData.day,
+					IsVideoCompleted: progressData.isVideoCompleted,
+					IsQuestionnaireCompleted: progressData.isQuestionnaireCompleted,
+				});
+				return {
+					id: record.id,
+					fields: record.fields,
+					createdTime: (record as any).createdTime,
+				};
+			}
+		})();
+
+		// Cache the promise
+		upsertCache.set(cacheKey, upsertPromise);
+
+		// Clean up cache after completion
+		upsertPromise.finally(() => {
+			upsertCache.delete(cacheKey);
+		});
+
+		return upsertPromise;
+	} catch (error) {
+		console.error("Error upserting user day progress:", error);
 		throw error;
 	}
 };

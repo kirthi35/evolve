@@ -1,13 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+	useState,
+	useEffect,
+	useRef,
+	useCallback,
+	useMemo,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../hooks/redux";
 import {
 	fetchContentForGroup,
-	fetchQuestionsForVideo,
+	fetchQuestionsForIds,
 	submitUserResponses,
 	upsertUserProgress,
 	fetchUserProgress,
-	fetchUserResponses,
+	fetchUserDayProgress,
+	upsertUserDayProgress,
 } from "../../services/airtableService";
 import type {
 	ContentItem,
@@ -29,56 +36,6 @@ declare global {
 	}
 }
 
-// Function to check if user has completed all Group A content
-const isGroupACompleted = async (
-	userRecordId: string,
-	content: ContentItem[],
-): Promise<boolean> => {
-	if (!userRecordId || content.length === 0) return false;
-
-	try {
-		// Get all user progress and responses
-		const [userProgress, userResponses] = await Promise.all([
-			fetchUserProgress(userRecordId),
-			fetchUserResponses(userRecordId),
-		]);
-
-		console.log({ userProgress, userResponses });
-
-		// Check if all videos are completed
-		const completedVideos = content.filter((video) => {
-			const videoProgress = userProgress.find(
-				(p) => p.fields.Video?.[0] === video.id,
-			);
-			return (
-				videoProgress?.fields.Status === "Completed" ||
-				(videoProgress?.fields.WatchPercentage ?? 0) >= 90
-			);
-		});
-
-		// Check if all questions are answered for completed videos
-		const allQuestionsAnswered = await Promise.all(
-			completedVideos.map(async (video) => {
-				const questions = await fetchQuestionsForVideo(video.fields.VideoID);
-				const answeredQuestions = questions.filter((question) =>
-					userResponses.some(
-						(response) => response.fields.Question?.[0] === question.id,
-					),
-				);
-				return answeredQuestions.length === questions.length;
-			}),
-		);
-
-		return (
-			completedVideos.length === content.length &&
-			allQuestionsAnswered.every(Boolean)
-		);
-	} catch (error) {
-		console.error("Error checking Group A completion:", error);
-		return false;
-	}
-};
-
 const GroupADashboard: React.FC = () => {
 	const [content, setContent] = useState<ContentItem[]>([]);
 	const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -89,8 +46,11 @@ const GroupADashboard: React.FC = () => {
 	>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [showFullPageLoader, setShowFullPageLoader] = useState(false);
+	const [isProcessingVideo, setIsProcessingVideo] = useState(false);
 	const [player, setPlayer] = useState<any>(null);
 	const [playerReady, setPlayerReady] = useState(false);
+	const [userDayProgress, setUserDayProgress] = useState<any[]>([]);
 
 	const navigate = useNavigate();
 	const { user } = useAppSelector((state) => state.user);
@@ -112,7 +72,22 @@ const GroupADashboard: React.FC = () => {
 		}
 	};
 
-	const currentVideo = content[currentVideoIndex];
+	// Filter out completed videos and find the next incomplete video
+	const availableVideos = useMemo(() => {
+		return content.filter((video) => {
+			const dayNumber = video.fields.Order || 1;
+			const dayProgress = userDayProgress.find(
+				(dp) => dp.fields.Day === dayNumber,
+			);
+			// Include video if it's not completed (both video and questionnaire)
+			return !(
+				dayProgress?.fields.IsVideoCompleted &&
+				dayProgress?.fields.IsQuestionnaireCompleted
+			);
+		});
+	}, [content, userDayProgress]);
+
+	const currentVideo = availableVideos[currentVideoIndex];
 
 	// Function to extract YouTube video ID from various URL formats
 	const extractYouTubeVideoId = useCallback((url: string): string => {
@@ -263,18 +238,34 @@ const GroupADashboard: React.FC = () => {
 
 	useEffect(() => {
 		const loadContent = async () => {
+			if (!user.airtableRecord) return;
+
 			try {
-				const groupAContent = await fetchContentForGroup("Group A");
+				const [groupAContent, dayProgressRecords] = await Promise.all([
+					fetchContentForGroup("Group A"),
+					fetchUserDayProgress(user.airtableRecord.fields.UserID),
+				]);
+
 				setContent(groupAContent);
+				setUserDayProgress(dayProgressRecords);
 
-				// Check completion status
-				if (user.airtableRecord && groupAContent.length > 0) {
-					const completed = await isGroupACompleted(
-						user.airtableRecord.fields.UserID,
-						groupAContent,
-					);
+				if (groupAContent.length > 0) {
+					// Filter available videos (not completed)
+					const availableVideos = groupAContent.filter((video) => {
+						const dayNumber = video.fields.Order || 1;
+						const dayProgress = dayProgressRecords.find(
+							(dp) => dp.fields.Day === dayNumber,
+						);
+						return !(
+							dayProgress?.fields.IsVideoCompleted &&
+							dayProgress?.fields.IsQuestionnaireCompleted
+						);
+					});
 
-					if (completed) {
+					if (availableVideos.length === 0) {
+						console.log(
+							"GroupA: All content completed, navigating to complete page",
+						);
 						navigate("/complete");
 						return;
 					}
@@ -287,7 +278,7 @@ const GroupADashboard: React.FC = () => {
 
 						const currentVideoProgress = userProgressRecords.find(
 							(p) =>
-								p.fields.Video?.[0] === groupAContent[currentVideoIndex]?.id,
+								p.fields.Video?.[0] === availableVideos[currentVideoIndex]?.id,
 						);
 						if (currentVideoProgress) {
 							setWatchProgress(currentVideoProgress.fields.WatchPercentage);
@@ -307,7 +298,7 @@ const GroupADashboard: React.FC = () => {
 		};
 
 		loadContent();
-	}, [user.airtableRecord, currentVideoIndex, navigate]);
+	}, [user.airtableRecord, navigate, currentVideoIndex]);
 
 	useEffect(() => {
 		// Load YouTube API
@@ -347,14 +338,29 @@ const GroupADashboard: React.FC = () => {
 		}
 	}, [playerReady, currentVideo, player]);
 
+	// Reset video index when available videos change (e.g., when videos are completed)
+	useEffect(() => {
+		if (
+			availableVideos.length > 0 &&
+			currentVideoIndex >= availableVideos.length
+		) {
+			console.log("Resetting video index due to available videos change");
+			setCurrentVideoIndex(0);
+			setWatchProgress(0);
+			setShowQuestionnaire(false);
+			setCurrentQuestions([]);
+			setPlayer(null);
+		}
+	}, [availableVideos.length, currentVideoIndex]);
+
 	const handleProceedToQuestions = async () => {
-		if (!currentVideo || !user.uid) return;
+		if (!currentVideo || !user.airtableRecord || isProcessingVideo) return;
 
 		try {
-			setIsSubmitting(true);
+			setIsProcessingVideo(true);
+			setShowFullPageLoader(true);
 
 			// Update progress to 100%
-			if (!user.airtableRecord) return;
 			await upsertUserProgress({
 				userRecordId: user.airtableRecord.id,
 				videoRecordId: currentVideo.id,
@@ -362,9 +368,17 @@ const GroupADashboard: React.FC = () => {
 				Status: "Completed",
 			});
 
+			// Update UserDayProgress - mark video as completed
+			await upsertUserDayProgress({
+				userRecordId: user.airtableRecord.id,
+				day: currentVideo.fields.Order || 1,
+				isVideoCompleted: true,
+				isQuestionnaireCompleted: false,
+			});
+
 			// Fetch questions for current video
-			const questions = await fetchQuestionsForVideo(
-				currentVideo.fields.VideoID,
+			const questions = await fetchQuestionsForIds(
+				currentVideo.fields.Questions || [],
 			);
 
 			// Convert questions to QuestionWithAnswerOptions format using built-in options
@@ -397,35 +411,54 @@ const GroupADashboard: React.FC = () => {
 		} catch (error) {
 			console.error("Error proceeding to questions:", error);
 		} finally {
-			setIsSubmitting(false);
+			setShowFullPageLoader(false);
+			setIsProcessingVideo(false);
 		}
 	};
 
 	const handleQuestionnaireSubmit = async (answers: QuestionnaireFormData) => {
-		if (!currentVideo || !user.uid) return;
+		if (!currentVideo || !user.airtableRecord) return;
 
 		try {
 			setIsSubmitting(true);
 
 			// Submit responses
-			if (!user.airtableRecord) return;
 			const responses = Object.entries(answers).map(([questionId, answer]) => ({
-				User: [user.airtableRecord!.id],
+				User: [user.airtableRecord?.id || ""],
 				Question: [questionId],
 				SelectedAnswer: answer,
 			}));
 
 			await submitUserResponses(responses);
 
-			// Check if all content is now completed
-			const completed = await isGroupACompleted(
-				user.airtableRecord!.fields.UserID,
-				content,
+			// Update UserDayProgress - mark questionnaire as completed
+			await upsertUserDayProgress({
+				userRecordId: user.airtableRecord.fields.UserID,
+				day: currentVideo.fields.Order || 1,
+				isVideoCompleted: true,
+				isQuestionnaireCompleted: true,
+			});
+
+			// Refresh user day progress
+			const updatedDayProgress = await fetchUserDayProgress(
+				user.airtableRecord.fields.UserID,
 			);
 
-			if (completed) {
+			// Check if all days are now completed
+			const allDaysCompleted = content.every((video) => {
+				const dayProgress = updatedDayProgress.find(
+					(dp) => dp.fields.Day === video.fields.Order,
+				);
+				return (
+					dayProgress?.fields.IsVideoCompleted &&
+					dayProgress?.fields.IsQuestionnaireCompleted
+				);
+			});
+
+			if (allDaysCompleted) {
 				navigate("/complete");
-			} else if (currentVideoIndex < content.length - 1) {
+				console.log("GroupA: All days completed, navigating to complete");
+			} else if (currentVideoIndex < availableVideos.length - 1) {
 				setCurrentVideoIndex(currentVideoIndex + 1);
 				setWatchProgress(0);
 				setShowQuestionnaire(false);
@@ -439,6 +472,19 @@ const GroupADashboard: React.FC = () => {
 		}
 	};
 
+	// Full page loader for video completion to questions transition
+	if (showFullPageLoader) {
+		return (
+			<div className="fixed inset-0 flex items-center justify-center z-50">
+				<div className="text-center space-y-4">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+					<p className="text-lg font-medium">Processing video completion...</p>
+					<p className="text-sm text-muted-foreground">Loading questions...</p>
+				</div>
+			</div>
+		);
+	}
+
 	if (isLoading) {
 		return (
 			<div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
@@ -449,7 +495,7 @@ const GroupADashboard: React.FC = () => {
 		);
 	}
 
-	if (content.length === 0) {
+	if (availableVideos.length === 0) {
 		return (
 			<div className="flex items-center justify-center h-64 p-4">
 				<Card className="w-full max-w-md">
@@ -469,13 +515,13 @@ const GroupADashboard: React.FC = () => {
 	return (
 		<div className="max-w-7xl mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
 			<div className="text-center md:text-left">
-				<h1 className="text-2xl md:text-3xl font-bold">Group A Dashboard</h1>
+				<h1 className="text-xl md:text-2xl font-bold">Group A Dashboard</h1>
 				<p className="text-muted-foreground text-sm md:text-base">
 					Video {currentVideoIndex + 1} of {content.length}
 				</p>
 			</div>
 
-			<div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+			<div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-6">
 				{/* Main Video Area */}
 				<div className="lg:col-span-2 xl:col-span-3">
 					{!showQuestionnaire ? (
@@ -503,10 +549,14 @@ const GroupADashboard: React.FC = () => {
 
 								<Button
 									onClick={handleProceedToQuestions}
-									disabled={watchProgress < 90 || isSubmitting}
+									disabled={
+										watchProgress < 90 ||
+										showFullPageLoader ||
+										isProcessingVideo
+									}
 									className="w-full py-3 text-sm md:text-base"
 								>
-									{isSubmitting ? "Processing..." : "Proceed to Questions"}
+									{isProcessingVideo ? "Processing..." : "Proceed to Questions"}
 								</Button>
 							</CardContent>
 						</Card>
@@ -521,45 +571,62 @@ const GroupADashboard: React.FC = () => {
 
 				{/* Upcoming Videos Sidebar */}
 				<div className="lg:col-span-1 xl:col-span-1">
-					<Card className="h-fit sticky top-6">
-						<CardHeader className="pb-4">
+					<Card className="h-fit sticky top-6 gap-2">
+						<CardHeader className="pb-2">
 							<CardTitle className="text-lg md:text-xl">
 								Upcoming Videos
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-3 max-h-[70vh] overflow-y-auto">
-							{content.map((video, index) => (
-								<div
-									key={video.id}
-									className={`p-3 rounded-lg border ${
-										index === currentVideoIndex
-											? "border-primary bg-primary/5"
-											: index < currentVideoIndex
-												? "border-green-500 bg-green-50"
-												: "border-border bg-muted/50"
-									}`}
-								>
-									<h4 className="font-medium text-xs md:text-sm leading-tight">
-										{index + 1}. {video.fields.Title}
-									</h4>
-									<Badge
-										variant={
-											index < currentVideoIndex
-												? "default"
-												: index === currentVideoIndex
-													? "secondary"
-													: "outline"
-										}
-										className="mt-2 text-xs"
+						<CardContent className="space-y-2 max-h-[70vh] overflow-y-auto p-3">
+							{content.map((video, index) => {
+								const dayNumber = video.fields.Order || index + 1;
+								const isCompleted = userDayProgress.some(
+									(dp) =>
+										dp.fields.Day === dayNumber &&
+										dp.fields.IsVideoCompleted &&
+										dp.fields.IsQuestionnaireCompleted,
+								);
+								const isCurrentVideo =
+									availableVideos[currentVideoIndex]?.id === video.id;
+								const isSkipped = !availableVideos.some(
+									(av: ContentItem) => av.id === video.id,
+								);
+
+								return (
+									<div
+										key={video.id}
+										className={`w-full p-2 flex flex-row justify-between items-center rounded-lg border ${
+											isCurrentVideo
+												? "border-muted-foreground"
+												: isCompleted
+													? "border-green-500 bg-green-500/10"
+													: "border-border"
+										}`}
 									>
-										{index < currentVideoIndex
-											? "Completed"
-											: index === currentVideoIndex
-												? "Current"
-												: "Locked"}
-									</Badge>
-								</div>
-							))}
+										<h4 className="font-medium text-xs md:text-sm leading-tight">
+											Video {index + 1}
+										</h4>
+										<Badge
+											variant={
+												isCompleted
+													? "default"
+													: isCurrentVideo
+														? "secondary"
+														: "outline"
+											}
+											className="text-xs"
+										>
+											{isCompleted
+												? "Completed"
+												: isCurrentVideo
+													? "Current"
+													: isSkipped
+														? "Skipped"
+														: "Locked"}
+										</Badge>
+									</div>
+								);
+							})}
 						</CardContent>
 					</Card>
 				</div>
