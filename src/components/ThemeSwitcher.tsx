@@ -58,9 +58,15 @@ const ThemeSwitcher: React.FC = () => {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="sm" className="w-full justify-start">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="w-full justify-start group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
+				>
 					{getThemeIcon()}
-					<span className="ml-2">Theme</span>
+					<span className="ml-2 group-data-[collapsible=icon]:hidden">
+						Theme
+					</span>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">

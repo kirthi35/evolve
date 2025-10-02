@@ -273,9 +273,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser user={navUser} isAdmin={user.isAdmin} />
-				<div className="p-2">
-					<ThemeSwitcher />
-				</div>
+				<ThemeSwitcher />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

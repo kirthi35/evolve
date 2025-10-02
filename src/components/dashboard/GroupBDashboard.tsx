@@ -1038,7 +1038,6 @@ const GroupBDashboard: React.FC = () => {
 										dp.fields.IsVideoCompleted &&
 										dp.fields.IsQuestionnaireCompleted,
 								);
-								const isLocked = dayNumber > (todaysVideo?.fields.Order || 1);
 
 								return (
 									<div
