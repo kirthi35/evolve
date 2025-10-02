@@ -912,8 +912,8 @@ const GroupBDashboard: React.FC = () => {
 
 	return (
 		<div className="max-w-screen-lg mx-auto p-2 md:p-4 space-y-4">
-			<div className="text-center md:text-left">
-				<h1 className="text-xl md:text-2xl font-bold">Group B Dashboard</h1>
+			<div className="text-left">
+				<p className="text-2xl md:text-4xl font-bold">Group B Dashboard</p>
 				<p className="text-muted-foreground text-sm md:text-base bg-background rounded-full px-2 border border-border font-medium max-w-fit">
 					Day {todaysVideo?.fields.Order || 1} of {totalDays}
 				</p>
