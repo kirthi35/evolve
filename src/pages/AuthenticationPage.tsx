@@ -12,6 +12,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card, CardContent } from "../components/ui/card";
+import gradientBackground from "../assets/gradient_background.png";
+import { GalleryVerticalEnd } from "lucide-react";
 
 interface AuthFormData {
 	email: string;
@@ -109,15 +111,31 @@ const AuthenticationPage: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center p-4">
-			<div className="w-full max-w-4xl">
+		<div className="min-h-screen flex items-center justify-center p-4 relative">
+			<div
+				className="dark:block hidden"
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 0,
+					backgroundImage: `url(${gradientBackground})`,
+					backgroundSize: "cover",
+					backgroundPosition: "center",
+					backgroundRepeat: "no-repeat",
+					opacity: 0.4,
+					// zIndex: -1,
+				}}
+			/>
+			<div className="w-full max-w-4xl z-10">
 				<div className="flex flex-col gap-6">
 					<Card className="overflow-hidden p-0">
 						<CardContent className="grid p-0 md:grid-cols-2">
 							<form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
 								<div className="flex flex-col gap-6">
 									<div className="flex flex-col items-center text-center">
-										<h1 className="text-2xl font-bold">
+										<h1 className="text-xl! md:text-4xl! font-bold">
 											{isSignUp ? "Create an account" : "Welcome back"}
 										</h1>
 										<p className="text-muted-foreground text-balance">
@@ -234,26 +252,28 @@ const AuthenticationPage: React.FC = () => {
 							</form>
 
 							<div className="bg-muted relative hidden md:block">
-								<div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-									<div className="text-center text-white p-8">
-										<div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-											<svg
-												className="w-8 h-8"
-												fill="currentColor"
-												viewBox="0 0 20 20"
-												aria-label="Clear Platform"
-												aria-hidden="true"
-											>
-												<path
-													fillRule="evenodd"
-													d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-													clipRule="evenodd"
-												/>
-											</svg>
+								<div className="flex items-center justify-center h-full relative">
+									<div
+										className="dark:block hidden"
+										style={{
+											position: "absolute",
+											top: 0,
+											left: 0,
+											right: 0,
+											bottom: 0,
+											backgroundImage: `url(${gradientBackground})`,
+											backgroundSize: "cover",
+											backgroundPosition: "center",
+											backgroundRepeat: "no-repeat",
+										}}
+									/>
+									<div className="text-center text-white p-8 relative z-10">
+										<div className="flex flex-col items-center justify-center mb-4">
+											<GalleryVerticalEnd className="w-12 h-12" />
+											<h3 className="text-xl font-semibold mb-2">
+												Clear Platform
+											</h3>
 										</div>
-										<h3 className="text-xl font-semibold mb-2">
-											Clear Platform
-										</h3>
 										<p className="text-white/80">
 											"This study platform has provided invaluable insights into
 											user behavior and preferences, helping us deliver better

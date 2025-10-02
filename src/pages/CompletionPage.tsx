@@ -5,6 +5,7 @@ import { signOutUser } from "../services/firebaseService";
 import { clearUser } from "../store/userSlice";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import gradientBackground from "../assets/gradient_background.png";
 
 const CompletionPage: React.FC = () => {
 	const navigate = useNavigate();
@@ -21,8 +22,24 @@ const CompletionPage: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-			<div className="max-w-md w-full space-y-8">
+		<div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+			<div
+				className="dark:block hidden"
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					right: 0,
+					bottom: 0,
+					backgroundImage: `url(${gradientBackground})`,
+					backgroundSize: "cover",
+					backgroundPosition: "center",
+					backgroundRepeat: "no-repeat",
+					opacity: 0.4,
+					// zIndex: -1,
+				}}
+			/>
+			<div className="max-w-lg w-full space-y-8 bg-background z-10 p-8 rounded-xl border border-border">
 				<div className="text-center">
 					<div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
 						<svg
@@ -49,7 +66,7 @@ const CompletionPage: React.FC = () => {
 					</p>
 				</div>
 
-				<Card>
+				<Card className="bg-background">
 					<CardContent className="py-8 px-6">
 						<div className="text-center space-y-4">
 							<p className="text-foreground">

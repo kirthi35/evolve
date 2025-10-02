@@ -525,12 +525,7 @@ const GroupADashboard: React.FC = () => {
 				{/* Main Video Area */}
 				<div className="lg:col-span-2 xl:col-span-3">
 					{!showQuestionnaire ? (
-						<Card className="h-fit">
-							<CardHeader className="pb-4">
-								<CardTitle className="text-lg md:text-xl">
-									{currentVideo?.fields.Title}
-								</CardTitle>
-							</CardHeader>
+						<Card className="h-fit bg-background">
 							<CardContent className="space-y-4">
 								<div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden min-h-[300px] md:min-h-[400px] lg:min-h-[500px] xl:min-h-[600px]">
 									<div ref={setPlayerRef} className="absolute inset-0"></div>
@@ -571,7 +566,7 @@ const GroupADashboard: React.FC = () => {
 
 				{/* Upcoming Videos Sidebar */}
 				<div className="lg:col-span-1 xl:col-span-1">
-					<Card className="h-fit sticky top-6 gap-2">
+					<Card className="h-fit sticky top-6 gap-2 bg-background">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-lg md:text-xl">
 								Upcoming Videos

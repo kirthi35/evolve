@@ -914,16 +914,16 @@ const GroupBDashboard: React.FC = () => {
 		<div className="max-w-screen-lg mx-auto p-2 md:p-4 space-y-4">
 			<div className="text-center md:text-left">
 				<h1 className="text-xl md:text-2xl font-bold">Group B Dashboard</h1>
-				<p className="text-muted-foreground text-sm md:text-base">
+				<p className="text-muted-foreground text-sm md:text-base bg-background rounded-full px-2 border border-border font-medium max-w-fit">
 					Day {todaysVideo?.fields.Order || 1} of {totalDays}
 				</p>
 				{isFirstTime && (
-					<div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-						<h3 className="font-semibold text-blue-900">
+					<div className="mt-4 p-4 border border-border rounded-xl bg-background">
+						<h3 className="font-semibold">
 							Welcome to Day {todaysVideo?.fields.Order || 1} of your study
 							journey!
 						</h3>
-						<p className="text-blue-800 text-sm mt-1">
+						<p className="text-muted-foreground text-sm mt-1">
 							You'll watch one video per day and answer questions. Each session
 							takes about 5 minutes. Remember, videos can only be watched once,
 							so make sure you're ready!
@@ -937,12 +937,12 @@ const GroupBDashboard: React.FC = () => {
 				<div className="lg:col-span-2 xl:col-span-3">
 					{!showQuestionnaire ? (
 						todaysVideo ? (
-							<Card className="h-fit">
-								<CardHeader className="pb-4">
+							<Card className="h-fit bg-background">
+								{/* <CardHeader className="pb-4">
 									<CardTitle className="text-lg md:text-xl">
 										{todaysVideo.fields.Title}
 									</CardTitle>
-								</CardHeader>
+								</CardHeader> */}
 								<CardContent className="space-y-4">
 									{!videoStarted && !isVideoLoading ? (
 										// Show video thumbnail with play button
@@ -1022,7 +1022,7 @@ const GroupBDashboard: React.FC = () => {
 
 				{/* Upcoming Videos Sidebar */}
 				<div className="lg:col-span-1 xl:col-span-1">
-					<Card className="h-fit sticky top-6 gap-2">
+					<Card className="h-fit sticky top-6 gap-2 bg-background">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-lg md:text-xl">
 								Upcoming Videos
@@ -1042,12 +1042,12 @@ const GroupBDashboard: React.FC = () => {
 								return (
 									<div
 										key={video.id}
-										className={`w-full p-2 flex flex-row justify-between items-center rounded-lg border ${
+										className={`w-full p-2 flex flex-row justify-between items-center rounded-xl border ${
 											isCurrentDay
-												? "border-primary bg-primary/5"
+												? "border-blue-500 bg-background"
 												: isCompleted
 													? "border-green-500 bg-green-50"
-													: "border-border bg-muted/50"
+													: "border-border bg-background"
 										}`}
 									>
 										<h4 className="font-medium text-xs md:text-sm leading-tight">

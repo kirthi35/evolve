@@ -10,6 +10,7 @@ import {
 	BreadcrumbSeparator,
 } from "./ui/breadcrumb";
 import { Separator } from "./ui/separator";
+import gradientBackground from "../assets/gradient_background.png";
 
 interface AppLayoutProps {
 	children: React.ReactNode;
@@ -55,7 +56,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 						)}
 					</div>
 				</header>
-				<div className="flex flex-1 flex-col gap-4 p-2 pt-0">{children}</div>
+				<div className="flex flex-1 flex-col gap-4 p-2 pt-0 relative">
+					<div
+						className="dark:block hidden"
+						style={{
+							position: "absolute",
+							top: 0,
+							left: 0,
+							right: 0,
+							bottom: 0,
+							backgroundImage: `url(${gradientBackground})`,
+							backgroundSize: "cover",
+							backgroundPosition: "center",
+							backgroundRepeat: "no-repeat",
+							opacity: 0.4,
+							// zIndex: -1,
+						}}
+					/>
+					<div className="relative z-10">{children}</div>
+				</div>
 			</SidebarInset>
 		</SidebarProvider>
 	);

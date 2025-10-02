@@ -50,25 +50,24 @@ const Questionnaire: React.FC<QuestionnaireProps> = ({
 	console.log("answerOptions", questions, answerOptions);
 
 	return (
-		<Card>
-			<CardHeader className="pb-4">
+		<Card className="bg-background">
+			<CardHeader>
 				<CardTitle className="text-lg md:text-xl">
 					Please answer the following questions:
 				</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<form
-					onSubmit={handleSubmit(handleFormSubmit)}
-					className="space-y-4 md:space-y-6"
-				>
+				<form onSubmit={handleSubmit(handleFormSubmit)} className="divide-y">
 					{questions.map((question, index) => (
-						<div
-							key={question.id}
-							className="space-y-3 md:space-y-4 p-4 border border-border rounded-lg bg-card"
-						>
-							<h4 className="text-sm md:text-base font-medium leading-tight">
-								{index + 1}. {question.fields.QuestionText}
-							</h4>
+						<div key={question.id} className="space-y-4 p-4">
+							<div className="pb-4 space-y-2">
+								<p className="text-sm text-muted-foreground font-medium">
+									Question of {index + 1} of {questions.length}
+								</p>
+								<h4 className="text-sm md:text-base font-medium leading-tight">
+									{question.fields.QuestionText}
+								</h4>
+							</div>
 
 							<Controller
 								name={question.id}
@@ -83,7 +82,7 @@ const Questionnaire: React.FC<QuestionnaireProps> = ({
 										{answerOptions[index]?.map((option) => (
 											<div
 												key={option}
-												className="flex items-start space-x-3 p-2 rounded hover:bg-accent transition-colors"
+												className="flex items-start space-x-3 p-2 border border-border rounded-lg hover:bg-accent transition-colors"
 											>
 												<RadioGroupItem
 													value={option}
