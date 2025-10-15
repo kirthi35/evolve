@@ -101,10 +101,6 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
 					<CardTitle className="text-xl md:text-2xl font-bold text-center leading-tight">
 						Pre-Exposure Parameters Assessment
 					</CardTitle>
-					<p className="text-center text-muted-foreground text-sm md:text-base mt-3 leading-relaxed">
-						Please provide the following information to help us understand your
-						background and tailor your experience.
-					</p>
 				</CardHeader>
 				<CardContent className="px-4 md:px-6">
 					<form
@@ -341,9 +337,11 @@ const OnboardingQuestionnaire: React.FC<OnboardingQuestionnaireProps> = ({
 
 						{/* Pre-test Knowledge Section (now dynamic) */}
 						<div className="space-y-4">
-							<h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
-								Pre-test Knowledge Assessment
-							</h3>
+							{knowledgeQuestions.length > 0 && (
+								<h3 className="text-base md:text-lg font-bold border-b-2 border-border pb-2 md:pb-3">
+									Pre-test Knowledge Assessment
+								</h3>
+							)}
 
 							<div className="space-y-6">
 								{knowledgeQuestions.map((q, index) => (
