@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { X } from "lucide-react";
+import { loadYouTubeIframeApi } from "../../lib/youtube";
 
 declare global {
 	interface Window {
@@ -54,25 +55,22 @@ export const IntroVideoDialog: React.FC<IntroVideoDialogProps> = ({
 		}
 	}, []);
 
-	// Load YouTube API
+	// Load YouTube API using shared singleton loader
 	useEffect(() => {
-		if (!window.YT) {
-			const tag = document.createElement("script");
-			tag.src = "https://www.youtube.com/iframe_api";
-			document.body.appendChild(tag);
-			window.onYouTubeIframeAPIReady = () => {
+		loadYouTubeIframeApi()
+			.then(() => {
 				setIsYtApiReady(true);
-			};
-		} else if (!isYtApiReady) {
-			setIsYtApiReady(true);
-		}
+			})
+			.catch((error) => {
+				console.error("IntroVideoDialog: YouTube API failed to load", error);
+			});
 
 		return () => {
 			if (player?.destroy) {
 				player.destroy();
 			}
 		};
-	}, [player, isYtApiReady]);
+	}, [player]);
 
 	// Create player when dialog opens
 	useEffect(() => {

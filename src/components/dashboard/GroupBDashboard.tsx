@@ -29,6 +29,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Button } from "../ui/button";
 import { IntroVideoDialog } from "./IntroVideoDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { loadYouTubeIframeApi } from "../../lib/youtube";
 import { Badge } from "../ui/badge";
 import {
 	Dialog,
@@ -269,70 +270,70 @@ const GroupBDashboard: React.FC = () => {
 		return userDayProgress.length === 0; // No day progress records means first time
 	}, [userDayProgress]);
 
-	useEffect(() => {
-		const loadData = async () => {
-			if (!user.airtableRecord) return;
-			setIsLoading(true);
-			try {
-				console.log(
-					"GroupB: Loading data for user:",
-					user.airtableRecord.fields.UserID,
-				);
-				const [
-					groupBContent,
-					progressRecords,
-					userResponseRecords,
-					dayProgressRecords,
-				] = await Promise.all([
-					fetchContentForGroup("Group B"),
-					fetchUserProgress(user.airtableRecord.fields.UserID),
-					fetchUserResponses(user.airtableRecord.fields.UserID),
-					fetchUserDayProgress(user.airtableRecord.fields.UserID),
-				]);
-				console.log("GroupB: Raw content loaded:", groupBContent);
-				console.log("GroupB: User progress loaded:", progressRecords);
-				console.log("GroupB: User responses loaded:", userResponseRecords);
-				console.log("GroupB: User day progress loaded:", dayProgressRecords);
+	const loadData = useCallback(async () => {
+		if (!user.airtableRecord) return;
+		setIsLoading(true);
+		try {
+			console.log(
+				"GroupB: Loading data for user:",
+				user.airtableRecord.fields.UserID,
+			);
+			const [
+				groupBContent,
+				progressRecords,
+				userResponseRecords,
+				dayProgressRecords,
+			] = await Promise.all([
+				fetchContentForGroup("Group B"),
+				fetchUserProgress(user.airtableRecord.fields.UserID),
+				fetchUserResponses(user.airtableRecord.fields.UserID),
+				fetchUserDayProgress(user.airtableRecord.fields.UserID),
+			]);
+			console.log("GroupB: Raw content loaded:", groupBContent);
+			console.log("GroupB: User progress loaded:", progressRecords);
+			console.log("GroupB: User responses loaded:", userResponseRecords);
+			console.log("GroupB: User day progress loaded:", dayProgressRecords);
 
-				const sortedContent = groupBContent.sort(
-					(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
-				);
-				setContent(sortedContent);
-				setUserProgress(progressRecords);
-				setUserResponses(userResponseRecords);
-				setUserDayProgress(dayProgressRecords);
+			const sortedContent = groupBContent.sort(
+				(a, b) => (a.fields.Order || 0) - (b.fields.Order || 0),
+			);
+			setContent(sortedContent);
+			setUserProgress(progressRecords);
+			setUserResponses(userResponseRecords);
+			setUserDayProgress(dayProgressRecords);
 
-				// Check if all Group B content is completed
-				if (sortedContent.length > 0) {
-					// Check if all days are completed
-					const allDaysCompleted = sortedContent.every((video) => {
-						const dayProgress = dayProgressRecords.find(
-							(dp) => dp.fields.Day === video.fields.Order,
-						);
-						return (
-							dayProgress?.fields.IsVideoCompleted &&
-							dayProgress?.fields.IsQuestionnaireCompleted
-						);
-					});
+			// Check if all Group B content is completed
+			if (sortedContent.length > 0) {
+				const allDaysCompleted = sortedContent.every((video) => {
+					const dayProgress = dayProgressRecords.find(
+						(dp) => dp.fields.Day === video.fields.Order,
+					);
+					return (
+						dayProgress?.fields.IsVideoCompleted &&
+						dayProgress?.fields.IsQuestionnaireCompleted
+					);
+				});
 
-					if (allDaysCompleted) {
-						console.log(
-							"GroupB: All content completed, navigating to complete page",
-						);
-						navigate("/complete");
-						return;
-					}
+				if (allDaysCompleted) {
+					console.log(
+						"GroupB: All content completed, navigating to complete page",
+					);
+					navigate("/complete");
+					return;
 				}
-			} catch (error) {
-				console.error("Error loading Group B data:", error);
-			} finally {
-				setIsLoading(false);
 			}
-		};
+		} catch (error) {
+			console.error("Error loading Group B data:", error);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [navigate, user.airtableRecord]);
+
+	useEffect(() => {
 		if (user.airtableRecord?.fields.UserID) {
 			loadData();
 		}
-	}, [user.airtableRecord, navigate]);
+	}, [user.airtableRecord, loadData]);
 
 	// Check if today's video is completed based on UserDayProgress
 	useEffect(() => {
@@ -446,19 +447,14 @@ const GroupBDashboard: React.FC = () => {
 			isYtApiReady,
 		);
 
-		if (!window.YT) {
-			console.log("GroupB: Loading YouTube API script");
-			const tag = document.createElement("script");
-			tag.src = "https://www.youtube.com/iframe_api";
-			document.body.appendChild(tag);
-			window.onYouTubeIframeAPIReady = () => {
+		loadYouTubeIframeApi()
+			.then(() => {
 				console.log("GroupB: YouTube API is ready");
 				setIsYtApiReady(true);
-			};
-		} else if (!isYtApiReady) {
-			console.log("GroupB: YouTube API already loaded, setting state");
-			setIsYtApiReady(true);
-		}
+			})
+			.catch((error) => {
+				console.error("GroupB: YouTube API failed to load", error);
+			});
 
 		// Cleanup function to destroy player when component unmounts
 		return () => {
@@ -467,7 +463,7 @@ const GroupBDashboard: React.FC = () => {
 				player.destroy();
 			}
 		};
-	}, [player, isYtApiReady]);
+	}, [player]);
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -730,6 +726,9 @@ const GroupBDashboard: React.FC = () => {
 			setUserDayProgress(updatedDayProgress);
 
 			setShowQuestionnaire(false);
+
+			// Refresh all dashboard data after questionnaire submission
+			await loadData();
 
 			// Check if all days are now completed using UserDayProgress
 			const allDaysCompleted = content.every((video) => {

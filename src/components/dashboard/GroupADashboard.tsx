@@ -23,6 +23,7 @@ import type {
 } from "../../types/airtable";
 import Questionnaire, { type QuestionWithAnswerOptions } from "./Questionnaire";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { loadYouTubeIframeApi } from "../../lib/youtube";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { Badge } from "../ui/badge";
@@ -301,19 +302,13 @@ const GroupADashboard: React.FC = () => {
 	}, [user.airtableRecord, navigate, currentVideoIndex]);
 
 	useEffect(() => {
-		// Load YouTube API
-		if (!window.YT) {
-			const tag = document.createElement("script");
-			tag.src = "https://www.youtube.com/iframe_api";
-			const firstScriptTag = document.getElementsByTagName("script")[0];
-			firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
-			window.onYouTubeIframeAPIReady = () => {
+		loadYouTubeIframeApi()
+			.then(() => {
 				setPlayerReady(true);
-			};
-		} else {
-			setPlayerReady(true);
-		}
+			})
+			.catch((error) => {
+				console.error("GroupA: YouTube API failed to load", error);
+			});
 	}, []);
 
 	// useEffect to create player when conditions are met
