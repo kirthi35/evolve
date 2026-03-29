@@ -80,6 +80,7 @@ const GroupBDashboard: React.FC = () => {
 	const [isProcessingVideo, setIsProcessingVideo] = useState(false);
 	const [showIntroVideo, setShowIntroVideo] = useState(false);
 	const playerRef = useRef<HTMLDivElement>(null);
+	const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
 	// Callback ref to ensure we know when the element is available
 	const setPlayerRef = (element: HTMLDivElement | null) => {
@@ -469,6 +470,14 @@ const GroupBDashboard: React.FC = () => {
 		};
 	}, [player, isYtApiReady]);
 
+	useEffect(() => {
+		const handleResize = () => {
+			setIsMobile(window.innerWidth < 768);
+		};
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	}, []);
+
 	const destroyPlayer = useCallback(() => {
 		if (player?.destroy) {
 			player.destroy();
@@ -620,10 +629,14 @@ const GroupBDashboard: React.FC = () => {
 		console.log("GroupB: Creating YouTube player");
 		// Note: isVideoLoading is already set to true in handleConfirmPlay
 
+		const container = playerRef.current;
+		const width = container.clientWidth;
+		const height = container.clientHeight;
+
 		try {
 			const newPlayer = new window.YT.Player(playerRef.current, {
-				height: "315",
-				width: "560",
+				height: Math.floor(height),
+				width: Math.floor(width),
 				videoId: videoId,
 				playerVars: {
 					autoplay: 1,
@@ -913,10 +926,10 @@ const GroupBDashboard: React.FC = () => {
 	return (
 		<div className="max-w-screen-lg mx-auto p-2 md:p-4 space-y-4">
 			<div className="text-left">
-				<p className="text-2xl md:text-4xl font-bold">Group B Dashboard</p>
+				{/* <p className="text-2xl md:text-4xl font-bold">Group B Dashboard</p>
 				<p className="text-muted-foreground text-sm md:text-base bg-background rounded-full px-2 border border-border font-medium max-w-fit">
 					Day {todaysVideo?.fields.Order || 1} of {totalDays}
-				</p>
+				</p> */}
 				{isFirstTime && (
 					<div className="mt-4 p-4 border border-border rounded-xl bg-background">
 						<h3 className="font-semibold">
@@ -946,7 +959,7 @@ const GroupBDashboard: React.FC = () => {
 								<CardContent className="space-y-4">
 									{!videoStarted && !isVideoLoading ? (
 										// Show video thumbnail with play button
-										<div className="relative w-full aspect-video bg-black rounded overflow-hidden">
+										<div className={`relative w-full bg-black rounded overflow-hidden ${isMobile ? 'h-[80vh]' : 'aspect-video'}`}>
 											{(() => {
 												const videoId = extractYouTubeVideoId(
 													todaysVideo.fields.YouTubeURL,
@@ -975,7 +988,7 @@ const GroupBDashboard: React.FC = () => {
 										</div>
 									) : (
 										// Show player container with optional loading overlay
-										<div className="relative w-full aspect-video bg-black rounded">
+										<div className={`relative w-full bg-black rounded ${isMobile ? 'h-[80vh]' : 'aspect-video'}`}>
 											<div ref={setPlayerRef} className="w-full h-full" />
 											{isVideoLoading && (
 												<div className="absolute inset-0 bg-black flex items-center justify-center">
@@ -1077,12 +1090,12 @@ const GroupBDashboard: React.FC = () => {
 				</div>
 			</div>
 
-			<div className="mt-2">
+			{/* <div className="mt-2">
 				<StudyTimeline
 					currentDay={todaysVideo?.fields.Order || 1}
 					totalDays={totalDays}
 				/>
-			</div>
+			</div> */}
 
 			{/* Warning Dialog */}
 			<Dialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
