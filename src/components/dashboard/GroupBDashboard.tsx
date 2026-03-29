@@ -27,7 +27,6 @@ import type {
 import Questionnaire, { type QuestionWithAnswerOptions } from "./Questionnaire";
 import { Skeleton } from "../ui/skeleton";
 import { Button } from "../ui/button";
-import StudyTimeline from "./StudyTimeline";
 import { IntroVideoDialog } from "./IntroVideoDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -251,10 +250,10 @@ const GroupBDashboard: React.FC = () => {
 	}, [userDayProgress, content, getNextVideo]);
 
 	const todaysVideo = getNextVideo;
-	const totalDays = useMemo(() => {
-		if (content.length === 0) return 7; // Default fallback
-		return Math.max(...content.map((c) => c.fields.Order || 0));
-	}, [content]);
+	// const totalDays = useMemo(() => {
+	// 	if (content.length === 0) return 7; // Default fallback
+	// 	return Math.max(...content.map((c) => c.fields.Order || 0));
+	// }, [content]);
 
 	// Debug logging
 	console.log("GroupB: Current state:", {
