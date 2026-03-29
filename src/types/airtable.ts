@@ -93,8 +93,13 @@ export interface UserDayProgress {
 // Form data interfaces
 export interface OnboardingFormData {
 	// Demographics
+	name: string;
+	contact: string;
 	age: string;
 	gender: string;
+	grade: string;
+	instituteType: string;
+	instituteName: string;
 
 	// Professional Information
 	specialty: string;
@@ -106,6 +111,7 @@ export interface OnboardingFormData {
 
 	// Knowledge Assessment (maps question record ID to selected answer text)
 	preTestKnowledge: Record<string, string>;
+	acceptedTerms: boolean;
 }
 
 export interface QuestionnaireFormData {
